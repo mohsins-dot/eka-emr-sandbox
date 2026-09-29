@@ -1,0 +1,3280 @@
+{
+  "info": {
+    "name": "Eka Doc Tool Sandbox",
+    "description": "Requests for the local Eka Doc Tool sandbox. Run \"Auth > Login\" first; it stores the access token for every other request. Swap baseUrl to https://api.eka.care (and your real credentials) to run the same requests against production.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:4010"
+    },
+    {
+      "key": "client_id",
+      "value": "EC_SANDBOX_001"
+    },
+    {
+      "key": "client_secret",
+      "value": "sandbox_secret_do_not_use_in_prod"
+    },
+    {
+      "key": "access_token",
+      "value": ""
+    },
+    {
+      "key": "refresh_token",
+      "value": ""
+    },
+    {
+      "key": "doctor_id",
+      "value": "174159057723921"
+    },
+    {
+      "key": "clinic_id",
+      "value": "67978400352a61001d64e9fb"
+    },
+    {
+      "key": "patient_id",
+      "value": "174678912588402"
+    },
+    {
+      "key": "appointment_id",
+      "value": "api-sandbox-0000-0000-0000-000000000002"
+    },
+    {
+      "key": "prescription_id",
+      "value": "P-DW-SANDBOX-0001"
+    },
+    {
+      "key": "oid",
+      "value": "174678912588401"
+    },
+    {
+      "key": "start_date",
+      "value": ""
+    },
+    {
+      "key": "end_date",
+      "value": ""
+    },
+    {
+      "key": "slot_start",
+      "value": ""
+    },
+    {
+      "key": "webhook_id",
+      "value": ""
+    },
+    {
+      "key": "admission_id",
+      "value": ""
+    },
+    {
+      "key": "slot_plus_1h",
+      "value": ""
+    },
+    {
+      "key": "slot_plus_1h15",
+      "value": ""
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (!pm.collectionVariables.get('start_date')) {",
+          "  const d = new Date(Date.now() + 19800000 + 86400000).toISOString().slice(0, 10);",
+          "  pm.collectionVariables.set('start_date', d); pm.collectionVariables.set('end_date', d);",
+          "}",
+          "const s = Number(pm.collectionVariables.get('slot_start'));",
+          "if (s) { pm.collectionVariables.set('slot_plus_1h', s + 3600); pm.collectionVariables.set('slot_plus_1h15', s + 4500); }",
+          "else { const t = Math.floor(Date.now()/1000) + 86400; pm.collectionVariables.set('slot_start', t); pm.collectionVariables.set('slot_plus_1h', t + 3600); pm.collectionVariables.set('slot_plus_1h15', t + 4500); }"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/connect-auth/v1/account/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "connect-auth",
+                "v1",
+                "account",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"client_id\": \"{{client_id}}\",\n  \"client_secret\": \"{{client_secret}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));",
+                  "if (pm.response.code < 300 && pm.response.text()) {",
+                  "  const j = pm.response.json();",
+                  "  pm.collectionVariables.set('access_token', j.access_token);",
+                  "  pm.collectionVariables.set('refresh_token', j.refresh_token);",
+                  "  pm.test('200', () => pm.response.to.have.status(200));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refresh token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Client-Id",
+                "value": "{{client_id}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/connect-auth/v1/account/refresh-token",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "connect-auth",
+                "v1",
+                "account",
+                "refresh-token"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));",
+                  "if (pm.response.code < 300 && pm.response.text()) {",
+                  "  const j = pm.response.json();",
+                  "  pm.collectionVariables.set('access_token', j.access_token);",
+                  "  pm.collectionVariables.set('refresh_token', j.refresh_token);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Business, doctors & clinics",
+      "item": [
+        {
+          "name": "Get workspace information",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cdr/v1/get_business_info/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cdr",
+                "v1",
+                "get_business_info",
+                ""
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get clinic and doctor details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/dr/v1/business/entities",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "dr",
+                "v1",
+                "business",
+                "entities"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get doctor profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/dr/v1/doctor/{{doctor_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "dr",
+                "v1",
+                "doctor",
+                "{{doctor_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get clinic details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/dr/v1/business/clinic/{{clinic_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "dr",
+                "v1",
+                "business",
+                "clinic",
+                "{{clinic_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get doctor services",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/dr/v1/doctor/service/{{doctor_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "dr",
+                "v1",
+                "doctor",
+                "service",
+                "{{doctor_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get all HIP users",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cdr/v1/hipusers/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cdr",
+                "v1",
+                "hipusers",
+                ""
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Onboarding",
+      "item": [
+        {
+          "name": "Create clinic",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cdr/v1/clinic/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cdr",
+                "v1",
+                "clinic",
+                ""
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"My Test Clinic\",\n  \"address\": \"1 MG Road\",\n  \"pincode\": \"560001\",\n  \"contact\": \"9876543210\",\n  \"city\": \"Bangalore\",\n  \"state\": \"Karnataka\",\n  \"partner_id\": \"MY-CLINIC-1\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List clinics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cdr/v1/clinic/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cdr",
+                "v1",
+                "clinic",
+                ""
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get clinic by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cdr/v1/clinic/MY-CLINIC-1/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cdr",
+                "v1",
+                "clinic",
+                "MY-CLINIC-1",
+                ""
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update clinic",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cdr/v1/clinic/MY-CLINIC-1/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cdr",
+                "v1",
+                "clinic",
+                "MY-CLINIC-1",
+                ""
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"My Renamed Clinic\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create doctor",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cdr/v1/doctor/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cdr",
+                "v1",
+                "doctor",
+                ""
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstname\": \"Asha\",\n  \"lastname\": \"Rao\",\n  \"gender\": \"F\",\n  \"mobile\": \"9876500000\",\n  \"email\": \"asha@example.com\",\n  \"specialisations\": [\n    \"Dermatologist\"\n  ],\n  \"qualifications\": [\n    \"MBBS\",\n    \"MD\"\n  ],\n  \"partner_clinic_ids\": [\n    \"MY-CLINIC-1\"\n  ],\n  \"partner_id\": \"MY-DOC-1\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List doctors",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cdr/v1/doctor/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cdr",
+                "v1",
+                "doctor",
+                ""
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get doctor by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cdr/v1/doctor/MY-DOC-1/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cdr",
+                "v1",
+                "doctor",
+                "MY-DOC-1",
+                ""
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update doctor",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cdr/v1/doctor/MY-DOC-1/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cdr",
+                "v1",
+                "doctor",
+                "MY-DOC-1",
+                ""
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"about\": \"Consultant dermatologist\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete doctor",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cdr/v1/doctor/MY-DOC-1/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cdr",
+                "v1",
+                "doctor",
+                "MY-DOC-1",
+                ""
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete clinic",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cdr/v1/clinic/MY-CLINIC-1/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cdr",
+                "v1",
+                "clinic",
+                "MY-CLINIC-1",
+                ""
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Eka user",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cdr/v1/ekauser/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cdr",
+                "v1",
+                "ekauser",
+                ""
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstname\": \"Front\",\n  \"lastname\": \"Office\",\n  \"gender\": \"F\",\n  \"dob\": \"1994-05-05\",\n  \"mobile\": \"9876511111\",\n  \"is_admin\": false,\n  \"seat_type\": \"b\",\n  \"persona\": \"S\",\n  \"doctor_ids\": [\n    \"{{doctor_id}}\"\n  ],\n  \"clinic_ids\": [\n    \"{{clinic_id}}\"\n  ],\n  \"partner_id\": \"MY-USER-1\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Eka users",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cdr/v1/ekauser/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cdr",
+                "v1",
+                "ekauser",
+                ""
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Eka user",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cdr/v1/ekauser/MY-USER-1/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cdr",
+                "v1",
+                "ekauser",
+                "MY-USER-1",
+                ""
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Eka user",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cdr/v1/ekauser/MY-USER-1/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cdr",
+                "v1",
+                "ekauser",
+                "MY-USER-1",
+                ""
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"is_admin\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete Eka user",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cdr/v1/ekauser/MY-USER-1/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cdr",
+                "v1",
+                "ekauser",
+                "MY-USER-1",
+                ""
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Patient registration (dr/v1)",
+      "item": [
+        {
+          "name": "Add patient to directory",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/dr/v1/patient",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "dr",
+                "v1",
+                "patient"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"designation\": \"Mr.\",\n  \"first_name\": \"Test\",\n  \"last_name\": \"Patient\",\n  \"gender\": \"M\",\n  \"dob\": \"1987-01-06\",\n  \"mobile\": \"+918888800001\",\n  \"partner_patient_id\": \"MY-PT-{{$timestamp}}\",\n  \"address\": {\n    \"city\": \"Bangalore\",\n    \"pincode\": \"560049\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));",
+                  "if (pm.response.code < 300 && pm.response.text()) {",
+                  "  const j = pm.response.json();",
+                  "  if (j.patient_id) pm.collectionVariables.set('patient_id', j.patient_id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Search patients by mobile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/dr/v1/business/patients/search?mobile=9999900001",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "dr",
+                "v1",
+                "business",
+                "patients",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "mobile",
+                  "value": "9999900001"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get patient by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/dr/v1/patient/{{patient_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "dr",
+                "v1",
+                "patient",
+                "{{patient_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update patient",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/dr/v1/patient/{{patient_id}}?partner_id=0",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "dr",
+                "v1",
+                "patient",
+                "{{patient_id}}"
+              ],
+              "query": [
+                {
+                  "key": "partner_id",
+                  "value": "0"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"last_name\": \"Updated\",\n  \"partner_meta\": {\n    \"mrn\": \"MRN-1\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Patient directory (profiles/v1)",
+      "item": [
+        {
+          "name": "Create patient profile",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "client-id",
+                "value": "{{client_id}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/profiles/v1/patient/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "profiles",
+                "v1",
+                "patient",
+                ""
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fn\": \"Eka\",\n  \"ln\": \"User\",\n  \"s\": \"Mr.\",\n  \"dob\": \"2000-01-02\",\n  \"gen\": \"M\",\n  \"bloodgroup\": \"A+\",\n  \"mobile\": \"+916000000000\",\n  \"email\": \"user@example.com\",\n  \"username\": \"UH9001\",\n  \"extras\": {\n    \"source\": \"sandbox\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));",
+                  "if (pm.response.code < 300 && pm.response.text()) {",
+                  "  const j = pm.response.json();",
+                  "  if (j.oid) pm.collectionVariables.set('oid', j.oid);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Search patient profiles",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "client-id",
+                "value": "{{client_id}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/profiles/v1/patient/search?prefix=eka&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "profiles",
+                "v1",
+                "patient",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "prefix",
+                  "value": "eka"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Retrieve patient profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "client-id",
+                "value": "{{client_id}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/profiles/v1/patient/{{oid}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "profiles",
+                "v1",
+                "patient",
+                "{{oid}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update patient profile",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "client-id",
+                "value": "{{client_id}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/profiles/v1/patient/{{oid}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "profiles",
+                "v1",
+                "patient",
+                "{{oid}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"new@example.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List patient profiles",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "client-id",
+                "value": "{{client_id}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/profiles/v1/patient/minified/?pageNo=1&pageSize=50&select=dob,gen",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "profiles",
+                "v1",
+                "patient",
+                "minified",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "pageNo",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "50"
+                },
+                {
+                  "key": "select",
+                  "value": "dob,gen"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Retrieve by mobile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "client-id",
+                "value": "{{client_id}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/profiles/v1/patient/by-mobile/?mob=%2B916000000000&full_profile=true",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "profiles",
+                "v1",
+                "patient",
+                "by-mobile",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "mob",
+                  "value": "%2B916000000000"
+                },
+                {
+                  "key": "full_profile",
+                  "value": "true"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Retrieve by username",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "client-id",
+                "value": "{{client_id}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/profiles/v1/patient/UH9001/username/?flatten=true",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "profiles",
+                "v1",
+                "patient",
+                "UH9001",
+                "username",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "flatten",
+                  "value": "true"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Archive patient profile",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "client-id",
+                "value": "{{client_id}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/profiles/v1/patient/{{oid}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "profiles",
+                "v1",
+                "patient",
+                "{{oid}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Permanently delete archived profile",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "client-id",
+                "value": "{{client_id}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/profiles/v1/patient/{{oid}}?perm=true",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "profiles",
+                "v1",
+                "patient",
+                "{{oid}}"
+              ],
+              "query": [
+                {
+                  "key": "perm",
+                  "value": "true"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Appointments",
+      "item": [
+        {
+          "name": "Get appointment slots",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/dr/v1/doctor/{{doctor_id}}/clinic/{{clinic_id}}/appointment/slot?start_date={{start_date}}&end_date={{end_date}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "dr",
+                "v1",
+                "doctor",
+                "{{doctor_id}}",
+                "clinic",
+                "{{clinic_id}}",
+                "appointment",
+                "slot"
+              ],
+              "query": [
+                {
+                  "key": "start_date",
+                  "value": "{{start_date}}"
+                },
+                {
+                  "key": "end_date",
+                  "value": "{{end_date}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));",
+                  "if (pm.response.code < 300 && pm.response.text()) {",
+                  "  const j = pm.response.json();",
+                  "  const s = Object.values(j.data.schedule)[0].slots.find(x => x.available);",
+                  "  if (s) pm.collectionVariables.set('slot_start', Math.floor(new Date(s.s).getTime() / 1000));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Book appointment (Eka IDs)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/dr/v1/appointment",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "dr",
+                "v1",
+                "appointment"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"doctor_id\": \"{{doctor_id}}\",\n  \"clinic_id\": \"{{clinic_id}}\",\n  \"patient_id\": \"{{patient_id}}\",\n  \"appointment_details\": {\n    \"start_time\": {{slot_start}},\n    \"mode\": \"INCLINIC\"\n  },\n  \"partner_meta\": {\n    \"encounter_id\": \"123\"\n  },\n  \"notes\": \"<p>Booked from Postman</p>\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));",
+                  "if (pm.response.code < 300 && pm.response.text()) {",
+                  "  const j = pm.response.json();",
+                  "  if (j.appointment_id) pm.collectionVariables.set('appointment_id', j.appointment_id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Book appointment (partner IDs + new patient)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/dr/v1/appointment",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "dr",
+                "v1",
+                "appointment"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"partner_appointment_id\": \"PA-{{$timestamp}}\",\n  \"partner_clinic_id\": \"CL01\",\n  \"partner_doctor_id\": \"test-doc-456\",\n  \"partner_patient_id\": \"NEW-{{$timestamp}}\",\n  \"appointment_details\": {\n    \"start_time\": {{slot_start}},\n    \"mode\": \"VIDEO\",\n    \"video_connect\": {\n      \"vendor\": \"100ms\",\n      \"url\": \"https://example.com/room\"\n    }\n  },\n  \"patient_details\": {\n    \"designation\": \"Ms.\",\n    \"first_name\": \"New\",\n    \"last_name\": \"Patient\",\n    \"mobile\": \"+919000000099\",\n    \"gender\": \"F\",\n    \"dob\": \"1990-01-01\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));",
+                  "if (pm.response.code < 300 && pm.response.text()) {",
+                  "  const j = pm.response.json();",
+                  "  if (j.appointment_id) pm.collectionVariables.set('appointment_id', j.appointment_id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get appointment details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/dr/v1/appointment/{{appointment_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "dr",
+                "v1",
+                "appointment",
+                "{{appointment_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get appointments (doctor + dates)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/dr/v1/appointment?doctor_id={{doctor_id}}&start_date={{start_date}}&end_date={{end_date}}&page_no=0",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "dr",
+                "v1",
+                "appointment"
+              ],
+              "query": [
+                {
+                  "key": "doctor_id",
+                  "value": "{{doctor_id}}"
+                },
+                {
+                  "key": "start_date",
+                  "value": "{{start_date}}"
+                },
+                {
+                  "key": "end_date",
+                  "value": "{{end_date}}"
+                },
+                {
+                  "key": "page_no",
+                  "value": "0"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get appointments (patient)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/dr/v1/appointment?patient_id={{patient_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "dr",
+                "v1",
+                "appointment"
+              ],
+              "query": [
+                {
+                  "key": "patient_id",
+                  "value": "{{patient_id}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update appointment",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/dr/v1/appointment/{{appointment_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "dr",
+                "v1",
+                "appointment",
+                "{{appointment_id}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": 3,\n  \"custom_attributes\": {\n    \"label\": [\n      \"vitals_submitted\"\n    ]\n  },\n  \"display_meta\": {\n    \"room\": \"2\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update appointment v2",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/dr/v2/appointment/{{appointment_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "dr",
+                "v2",
+                "appointment",
+                "{{appointment_id}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appointment_details\": {\n    \"mode\": \"INCLINIC\"\n  },\n  \"partner_meta\": {\n    \"encounter_id\": \"456\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reschedule appointment",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/appointments/v1/{{appointment_id}}/reschedule",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "appointments",
+                "v1",
+                "{{appointment_id}}",
+                "reschedule"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"start_time\": {{slot_plus_1h}},\n  \"end_time\": {{slot_plus_1h15}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));",
+                  "if (pm.response.code < 300 && pm.response.text()) {",
+                  "  const j = pm.response.json();",
+                  "  if (j.appointment_id) pm.collectionVariables.set('appointment_id', j.appointment_id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Parked appointment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/dr/v1/appointment/{{appointment_id}}/parked?partner_id=0",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "dr",
+                "v1",
+                "appointment",
+                "{{appointment_id}}",
+                "parked"
+              ],
+              "query": [
+                {
+                  "key": "partner_id",
+                  "value": "0"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Confirm follow-up appointment",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/dr/v1/appointment/{{appointment_id}}/follow-up/confirm",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "dr",
+                "v1",
+                "appointment",
+                "{{appointment_id}}",
+                "follow-up",
+                "confirm"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"start_time\": {{slot_plus_1h}},\n  \"end_time\": {{slot_plus_1h15}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Complete appointment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/dr/v1/appointment/{{appointment_id}}/complete?partner_id=0",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "dr",
+                "v1",
+                "appointment",
+                "{{appointment_id}}",
+                "complete"
+              ],
+              "query": [
+                {
+                  "key": "partner_id",
+                  "value": "0"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "No-show flow",
+          "item": [
+            {
+              "name": "Book appointment",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "auth",
+                    "value": "{{access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/dr/v1/appointment",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "dr",
+                    "v1",
+                    "appointment"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"doctor_id\": \"{{doctor_id}}\",\n  \"clinic_id\": \"{{clinic_id}}\",\n  \"patient_id\": \"{{patient_id}}\",\n  \"appointment_details\": {\n    \"start_time\": {{slot_start}}\n  }\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));",
+                      "if (pm.response.code < 300 && pm.response.text()) {",
+                      "  const j = pm.response.json();",
+                      "  if (j.appointment_id) pm.collectionVariables.set('appointment_id', j.appointment_id);",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "No-show appointment",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "auth",
+                    "value": "{{access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/dr/v1/appointment/{{appointment_id}}/change-status?partner_id=0",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "dr",
+                    "v1",
+                    "appointment",
+                    "{{appointment_id}}",
+                    "change-status"
+                  ],
+                  "query": [
+                    {
+                      "key": "partner_id",
+                      "value": "0"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"NS\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Cancel flow",
+          "item": [
+            {
+              "name": "Book appointment",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "auth",
+                    "value": "{{access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/dr/v1/appointment",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "dr",
+                    "v1",
+                    "appointment"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"doctor_id\": \"{{doctor_id}}\",\n  \"clinic_id\": \"{{clinic_id}}\",\n  \"patient_id\": \"{{patient_id}}\",\n  \"appointment_details\": {\n    \"start_time\": {{slot_start}}\n  }\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));",
+                      "if (pm.response.code < 300 && pm.response.text()) {",
+                      "  const j = pm.response.json();",
+                      "  if (j.appointment_id) pm.collectionVariables.set('appointment_id', j.appointment_id);",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Cancel appointment",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "auth",
+                    "value": "{{access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/dr/v1/appointment/{{appointment_id}}/cancel?partner_id=0",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "dr",
+                    "v1",
+                    "appointment",
+                    "{{appointment_id}}",
+                    "cancel"
+                  ],
+                  "query": [
+                    {
+                      "key": "partner_id",
+                      "value": "0"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Prescription, payment, IPD, notify",
+      "item": [
+        {
+          "name": "Get prescription details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/dr/v1/prescription/{{prescription_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "dr",
+                "v1",
+                "prescription",
+                "{{prescription_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get transaction status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/dr/v1/payment/transaction_status/txn-sandbox-0001",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "dr",
+                "v1",
+                "payment",
+                "transaction_status",
+                "txn-sandbox-0001"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create IPD admission",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/appointments/v1/ipd/admission",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "appointments",
+                "v1",
+                "ipd",
+                "admission"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ipid\": \"IPD-2026-000001\",\n  \"patient\": {\n    \"id\": \"{{patient_id}}\",\n    \"profile\": {\n      \"personal\": {\n        \"gender\": \"M\",\n        \"name\": \"Test Patient\",\n        \"phone\": {\n          \"c\": \"+91\",\n          \"n\": \"8888800001\"\n        }\n      }\n    }\n  },\n  \"doc\": {\n    \"id\": \"{{doctor_id}}\",\n    \"name\": \"Dr. Priya Sharma\"\n  },\n  \"docid\": \"{{doctor_id}}\",\n  \"category\": {\n    \"id\": \"cat-gen\",\n    \"name\": \"General Ward\"\n  },\n  \"department\": {\n    \"id\": \"dept-med\",\n    \"name\": \"General Medicine\"\n  },\n  \"facility\": {\n    \"id\": \"{{clinic_id}}\",\n    \"name\": \"Sandbox Heart & Wellness Clinic\"\n  },\n  \"bed\": \"GW-12\",\n  \"duration\": {\n    \"value\": 2,\n    \"unit\": \"days\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));",
+                  "if (pm.response.code < 300 && pm.response.text()) {",
+                  "  const j = pm.response.json();",
+                  "  if (j.id) pm.collectionVariables.set('admission_id', j.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get IPD admission",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/appointments/v1/ipd/admission/{{admission_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "appointments",
+                "v1",
+                "ipd",
+                "admission",
+                "{{admission_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Send notification",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notification/v1/notify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notification",
+                "v1",
+                "notify"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"partner_payload\": {\n    \"partner_doctor_id\": \"test-doc-456\",\n    \"message\": {\n      \"title\": \"New booking\",\n      \"body\": \"A patient booked a slot\",\n      \"img\": \"\"\n    },\n    \"landing_page\": \"q\",\n    \"params\": {\n      \"action\": \"move\",\n      \"aid\": \"{{appointment_id}}\",\n      \"status\": \"confirmed\"\n    }\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Webhooks",
+      "item": [
+        {
+          "name": "Register webhook (built-in receiver)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notification/v1/connect/webhook/subscriptions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notification",
+                "v1",
+                "connect",
+                "webhook",
+                "subscriptions"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"endpoint\": \"{{baseUrl}}/_sandbox/webhook-receiver\",\n  \"event_names\": [\n    \"appointment.created\",\n    \"appointment.updated\",\n    \"appointment.statuschange\",\n    \"prescription.created\",\n    \"prescription.updated\"\n  ],\n  \"signing_key\": \"supersecretkey\",\n  \"protocol\": \"http\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));",
+                  "if (pm.response.code < 300 && pm.response.text()) {",
+                  "  const j = pm.response.json();",
+                  "  if (j.id) pm.collectionVariables.set('webhook_id', j.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get webhooks",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notification/v1/connect/webhook/subscriptions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notification",
+                "v1",
+                "connect",
+                "webhook",
+                "subscriptions"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete webhook",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notification/v1/connect/webhook/subscriptions/{{webhook_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notification",
+                "v1",
+                "connect",
+                "webhook",
+                "subscriptions",
+                "{{webhook_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Sandbox controls (not in production)",
+      "item": [
+        {
+          "name": "Sandbox info",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/_sandbox/info",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "_sandbox",
+                "info"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Book appointment to drive",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/dr/v1/appointment",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "dr",
+                "v1",
+                "appointment"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"doctor_id\": \"{{doctor_id}}\",\n  \"clinic_id\": \"{{clinic_id}}\",\n  \"patient_id\": \"{{patient_id}}\",\n  \"appointment_details\": {\n    \"start_time\": {{slot_start}}\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));",
+                  "if (pm.response.code < 300 && pm.response.text()) {",
+                  "  const j = pm.response.json();",
+                  "  if (j.appointment_id) pm.collectionVariables.set('appointment_id', j.appointment_id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Doctor starts consult (BK -> OG)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/_sandbox/appointments/{{appointment_id}}/start",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "_sandbox",
+                "appointments",
+                "{{appointment_id}}",
+                "start"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Doctor writes prescription (-> CM)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/_sandbox/appointments/{{appointment_id}}/prescription",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "_sandbox",
+                "appointments",
+                "{{appointment_id}}",
+                "prescription"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));",
+                  "if (pm.response.code < 300 && pm.response.text()) {",
+                  "  const j = pm.response.json();",
+                  "  if (j.prescription_id) pm.collectionVariables.set('prescription_id', j.prescription_id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Patient pays",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/_sandbox/appointments/{{appointment_id}}/payment",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "_sandbox",
+                "appointments",
+                "{{appointment_id}}",
+                "payment"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"payment_status\": \"PAYMENT_SUCCESS\",\n  \"payment_mode\": \"UPI\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Fire test webhook",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/_sandbox/webhooks/test",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "_sandbox",
+                "webhooks",
+                "test"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"event\": \"appointment.created\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Webhook deliveries",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/_sandbox/webhooks/deliveries",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "_sandbox",
+                "webhooks",
+                "deliveries"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Built-in receiver inbox",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/_sandbox/webhook-receiver",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "_sandbox",
+                "webhook-receiver"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Short-lived token (5s)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/_sandbox/token?ttl=5",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "_sandbox",
+                "token"
+              ],
+              "query": [
+                {
+                  "key": "ttl",
+                  "value": "5"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reset sandbox data",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/_sandbox/reset",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "_sandbox",
+                "reset"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

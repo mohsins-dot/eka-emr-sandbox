@@ -1,0 +1,22 @@
+services:
+  eka-sandbox:
+    build: .
+    image: eka-doctool-sandbox:latest
+    ports:
+      - "4010:4010"
+    environment:
+      # Uncomment to override the defaults (see README > Configuration)
+      # EKA_SANDBOX_CLIENT_ID: EC_SANDBOX_001
+      # EKA_SANDBOX_CLIENT_SECRET: sandbox_secret_do_not_use_in_prod
+      # ACCESS_TOKEN_TTL: "1800"
+      # LATENCY_MS: "0"
+      LOG_REQUESTS: "true"
+    volumes:
+      - eka-sandbox-data:/data
+    # When your webhook receiver runs on your host machine, register it as
+    # http://host.docker.internal:<port>/<path> so the container can reach it.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  eka-sandbox-data:
