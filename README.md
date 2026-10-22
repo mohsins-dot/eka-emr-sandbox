@@ -39,7 +39,14 @@ docker compose down                # stop it (add -v to also delete the saved da
 
 > **Is Docker stuck on "Attaching to eka-sandbox-1"?** No. The server is running and waiting for requests. If the container was already running, Docker doesn't print the startup banner again. Open http://localhost:4010 to confirm.
 
-Then open **http://localhost:4010**. The dashboard there shows your credentials, the seeded IDs, recent appointments and webhook deliveries.
+Then open **http://localhost:4010**. That's the sandbox's own page, with six tabs:
+
+* **Overview:** your base URL and credentials, the state of the sandbox, an **integration checklist** that ticks itself off as your app makes the right calls (and shows the next step), live activity, and one-click **test scenarios** (first booking, full visit with webhooks, reschedule and cancel, schedules, onboarding, errors).
+* **API Console:** pick any endpoint, edit params, headers and body, send, and see the response with cURL, JavaScript and Python versions. It signs in for you and saves IDs from responses (patient, appointment, prescription and so on) for the next request. "Simulate error" forces a 4xx or 5xx response.
+* **Request log:** every API call the sandbox receives, live, with request headers and bodies and the response. Calls from your own app are tagged **your app**, so you can see exactly what your integration sent, including calls to paths that don't exist.
+* **Appointments:** everything booked, with buttons to play the doctor (start consult, write prescription) or the patient (pay, cancel). These fire the real webhooks.
+* **Webhooks:** subscriptions, every delivery with its signature header, the built-in receiver's inbox, and a "Fire test event" button.
+* **Test data:** seeded doctors, clinics and patients, and the variables the console uses.
 
 **Port 4010 already in use?** Start on another port with `PORT=4020 npm start` (PowerShell: `$env:PORT=4020; npm start`).
 
@@ -150,6 +157,7 @@ In production, a doctor starts a consultation and writes a prescription in the E
 | `POST /_sandbox/token?ttl=5` | Issues an access token that expires in 5 s, for testing your refresh logic |
 | `POST /_sandbox/reset` | Restores the seed data |
 | `GET /_sandbox/info` | Returns credentials and all current IDs as JSON |
+| `GET /_sandbox/requests` | The request log as JSON (`?since=<id>` for newer entries); `DELETE` clears it |
 
 **Appointment status lifecycle**
 
@@ -267,7 +275,10 @@ src/
   store.js            state + persistence to data/db.json
   webhooks.js         delivery and Eka-Webhook-Signature signing
   models.js           response shapes for each API family
-  dashboard.js        the page at http://localhost:4010
+  dashboard.js        serves the sandbox page at http://localhost:4010
+  ui/index.html       the sandbox page: overview, console, request log, appointments, webhooks, test data
+  ui/endpoints.js     endpoint catalogue the console is built from
+  requestlog.js       in-memory log of API calls shown on the Request log tab
   schedule.js         schedule rule resolution (used by /schedule/resolved and slots)
   routes/
     auth.js           login, refresh
@@ -289,7 +300,7 @@ npm test     # starts a throwaway instance and runs 74 end-to-end checks across 
 
 The same tests run automatically on GitHub for every push and pull request (`.github/workflows/test.yml`).
 
-**Adding an endpoint.** Add a route in the matching file under `src/routes/` with `r.add(METHOD, path, handler)`, return the documented response shape, add a request to the Postman collection, and add a check to `test/smoke.js`.
+**Adding an endpoint.** Add a route in the matching file under `src/routes/` with `r.add(METHOD, path, handler)`, return the documented response shape, add it to `src/ui/endpoints.js` so it shows in the API Console, add a request to the Postman collection, and add a check to `test/smoke.js`. The tests fail if a console entry points at a route that doesn't exist.
 
 ## Support
 

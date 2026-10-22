@@ -7,6 +7,8 @@ const { spawn } = require('child_process');
 const crypto = require('crypto');
 const path = require('path');
 const assert = require('assert');
+const vm = require('vm');
+const { buildRouter } = require('../src/server');
 
 const PORT = 4999;
 const BASE = `http://localhost:${PORT}`;
@@ -511,9 +513,36 @@ function addDays(s, n) {
     const r = await fetch(BASE + '/dr/v1/patient', { method: 'POST', headers: { auth: T, 'Content-Type': 'application/json' }, body: '{bad' });
     assert.strictEqual(r.status, 400);
   });
-  await test('dashboard renders', async () => {
-    const r = await fetch(BASE + '/');
-    assert.ok((await r.text()).includes('Eka Doc Tool Sandbox'));
+  await test('portal renders with config and endpoint catalogue', async () => {
+    const html = await (await fetch(BASE + '/')).text();
+    assert.ok(html.includes('<title>Eka Sandbox</title>'));
+    assert.ok(!html.includes('/*__CONFIG__*/') && html.includes(`"clientId":"${client_id}"`));
+    const js = await fetch(BASE + '/_sandbox/ui/endpoints.js');
+    assert.match(js.headers.get('content-type'), /javascript/);
+    const sandbox = { window: {} };
+    vm.runInNewContext(await js.text(), sandbox);
+    const eps = sandbox.window.EKA_ENDPOINTS;
+    const ids = new Set(eps.map((e) => e.id));
+    assert.strictEqual(ids.size, eps.length, 'endpoint ids must be unique');
+    const router = buildRouter();
+    for (const e of eps) {
+      assert.ok(router.match(e.method, e.path.replace(/\{\w+\}/g, 'x')).route, `no route for ${e.method} ${e.path}`);
+      for (const n of e.next || []) assert.ok(ids.has(n), `${e.id} links to missing ${n}`);
+    }
+    const linked = [...html.matchAll(/#\/console\/([a-z0-9-]+)/g), ...html.matchAll(/\['([a-z0-9]+-[a-z0-9-]+)', '/g), ...html.matchAll(/ep: '([a-z0-9-]+)'/g)].map((m) => m[1]);
+    assert.ok(linked.length > 30, 'expected scenario and checklist links');
+    for (const id of linked) assert.ok(ids.has(id), `page links to missing endpoint ${id}`);
+  });
+  await test('request log records API calls with source and bodies', async () => {
+    const j = (await call('GET', '/_sandbox/requests')).body;
+    assert.ok(j.latest >= j.requests.length && j.requests.length > 50);
+    const book = j.requests.find((e) => e.route === 'POST /dr/v1/appointment' && e.status === 201);
+    assert.strictEqual(book.source, 'app'); assert.ok(book.request.body.appointment_details); assert.ok(book.response.appointment_id);
+    assert.ok(book.request.headers.auth.endsWith('…'), 'tokens are masked');
+    assert.ok(!j.requests.some((e) => e.path.startsWith('/_sandbox')), '/_sandbox calls are not logged');
+    await fetch(BASE + '/cdr/v1/get_business_info/', { headers: { auth: T, 'x-sandbox-client': 'console' } });
+    const since = (await call('GET', `/_sandbox/requests?since=${j.latest}`)).body.requests;
+    assert.strictEqual(since.length, 1); assert.strictEqual(since[0].source, 'console');
   });
   await test('reset', async () => {
     await call('POST', '/_sandbox/reset');

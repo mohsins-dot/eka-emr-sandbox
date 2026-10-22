@@ -13,11 +13,13 @@ const { samplePrescription, IDS } = require('../seed');
 const { setStatus } = require('./appointments');
 const { signJwt, now, uuid, randDigits } = require('../util');
 const dashboard = require('../dashboard');
+const requestLog = require('../requestlog');
 
 function register(r) {
   const open = { auth: false };
 
   r.add('GET', '/', () => ({ status: 200, html: dashboard.render() }), open);
+  r.add('GET', '/_sandbox/ui/endpoints.js', () => ({ status: 200, html: dashboard.endpointsJs(), contentType: 'text/javascript; charset=utf-8' }), open);
 
   r.add('GET', '/_sandbox/info', () => {
     const d = store.db();
@@ -37,6 +39,7 @@ function register(r) {
 
   r.add('POST', '/_sandbox/reset', () => {
     store.reset();
+    requestLog.clear();
     return { status: 'success', message: 'Sandbox data reset to seed state. Webhook subscriptions and tokens were cleared.' };
   }, open);
 
@@ -135,6 +138,10 @@ function register(r) {
     return { ok: true };
   }, open);
   r.add('GET', '/_sandbox/webhook-receiver', () => ({ received: store.db().received }), open);
+
+  // API calls received, newest first. ?since=<id> returns only newer ones.
+  r.add('GET', '/_sandbox/requests', ({ query }) => requestLog.list(Number(query.since) || 0), open);
+  r.add('DELETE', '/_sandbox/requests', () => { requestLog.clear(); return { status: 'success' }; }, open);
 
   r.add('GET', '/_sandbox/notifications', () => ({ notifications: store.db().notifications }), open);
 }

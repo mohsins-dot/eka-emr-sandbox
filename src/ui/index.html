@@ -1,0 +1,981 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Eka Sandbox</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%236B5CE0'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='16' font-weight='700' fill='white' text-anchor='middle'%3Ee%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+:root {
+  --primary: #6B5CE0; --primary-ink: #5a4bd3; --primary-soft: rgba(107,92,224,.10);
+  --bg: #f6f6f9; --card: #ffffff; --surface: #fafafb; --surface-2: #f1f1f5; --code-bg: #f7f7f9;
+  --border: #e6e6ec; --border-strong: #d6d6e0;
+  --text: #17171c; --text-2: #3f3f4a; --muted: #6b6b78; --faint: #9a9aa6;
+  --get: #16a163; --get-bg: rgba(22,161,99,.12); --post: #2f6be0; --post-bg: rgba(47,107,224,.12);
+  --put: #b7791f; --put-bg: rgba(183,121,31,.14); --patch: #d0601f; --patch-bg: rgba(208,96,31,.13);
+  --delete: #d03b32; --delete-bg: rgba(208,59,50,.12);
+  --ok: #16a163; --warn: #b7791f; --err: #d03b32;
+  --j-key: #6B5CE0; --j-str: #16803c; --j-num: #c2410c; --j-bool: #2f6be0; --j-null: #9a9aa6;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --primary: #7d70e8; --primary-ink: #a99ff5; --primary-soft: rgba(125,112,232,.16);
+    --bg: #0b0c10; --card: #121319; --surface: #16171e; --surface-2: #1c1e26; --code-bg: #0d0e13;
+    --border: rgba(255,255,255,.08); --border-strong: rgba(255,255,255,.14);
+    --text: #ececf1; --text-2: #c9c9d3; --muted: #9a9aa8; --faint: #6e6e7c;
+    --get: #3ccf8e; --get-bg: rgba(60,207,142,.14); --post: #6b9bff; --post-bg: rgba(107,155,255,.15);
+    --put: #e3b04b; --put-bg: rgba(227,176,75,.15); --patch: #f08a4b; --patch-bg: rgba(240,138,75,.15);
+    --delete: #f2675e; --delete-bg: rgba(242,103,94,.15);
+    --ok: #3ccf8e; --warn: #e3b04b; --err: #f2675e;
+    --j-key: #a99ff5; --j-str: #7ee2a8; --j-num: #f5a97f; --j-bool: #8ab4ff; --j-null: #6e6e7c;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --primary: #7d70e8; --primary-ink: #a99ff5; --primary-soft: rgba(125,112,232,.16);
+  --bg: #0b0c10; --card: #121319; --surface: #16171e; --surface-2: #1c1e26; --code-bg: #0d0e13;
+  --border: rgba(255,255,255,.08); --border-strong: rgba(255,255,255,.14);
+  --text: #ececf1; --text-2: #c9c9d3; --muted: #9a9aa8; --faint: #6e6e7c;
+  --get: #3ccf8e; --get-bg: rgba(60,207,142,.14); --post: #6b9bff; --post-bg: rgba(107,155,255,.15);
+  --put: #e3b04b; --put-bg: rgba(227,176,75,.15); --patch: #f08a4b; --patch-bg: rgba(240,138,75,.15);
+  --delete: #f2675e; --delete-bg: rgba(242,103,94,.15);
+  --ok: #3ccf8e; --warn: #e3b04b; --err: #f2675e;
+  --j-key: #a99ff5; --j-str: #7ee2a8; --j-num: #f5a97f; --j-bool: #8ab4ff; --j-null: #6e6e7c;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--text); font: 14px/1.55 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
+a { color: var(--primary-ink); text-decoration: none; }
+a:hover { text-decoration: underline; }
+code, pre, .mono, textarea.code { font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace; }
+code { font-size: 12px; background: var(--surface-2); border: 1px solid var(--border); padding: 1px 5px; border-radius: 6px; }
+button { font: inherit; color: inherit; cursor: pointer; }
+input, select, textarea { font: inherit; color: var(--text); }
+h1, h2, h3 { margin: 0; letter-spacing: -.01em; }
+p { margin: 0; }
+.muted { color: var(--muted); } .faint { color: var(--faint); } .small { font-size: 12.5px; } .xs { font-size: 11.5px; }
+.spacer { flex: 1; }
+
+/* ---------- top bar ---------- */
+.topbar { position: sticky; top: 0; z-index: 30; background: color-mix(in srgb, var(--card) 92%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); }
+.bar { display: flex; align-items: center; gap: 12px; height: 56px; padding: 0 20px; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 600; color: var(--text); white-space: nowrap; }
+.brand:hover { text-decoration: none; }
+.brand img { height: 22px; display: block; }
+.brand .logo-dark { display: none; }
+:root[data-theme="dark"] .brand .logo-light { display: none; }
+:root[data-theme="dark"] .brand .logo-dark { display: block; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .brand .logo-light { display: none; } :root:not([data-theme="light"]) .brand .logo-dark { display: block; } }
+.chip { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600; padding: 2px 9px; border-radius: 99px; border: 1px solid var(--border-strong); color: var(--muted); white-space: nowrap; }
+.chip.primary { color: var(--primary-ink); border-color: transparent; background: var(--primary-soft); }
+.chip.ok { color: var(--ok); border-color: transparent; background: color-mix(in srgb, var(--ok) 13%, transparent); }
+.chip.warn { color: var(--warn); border-color: transparent; background: color-mix(in srgb, var(--warn) 14%, transparent); }
+.env { display: flex; align-items: center; gap: 8px; padding: 5px 11px; border-radius: 99px; border: 1px solid var(--border); background: var(--surface); font-size: 12.5px; color: var(--text-2); white-space: nowrap; }
+.pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 0 color-mix(in srgb, var(--ok) 60%, transparent); animation: pulse 2s infinite; flex: none; }
+.pulse.off { background: var(--err); animation: none; }
+@keyframes pulse { 70% { box-shadow: 0 0 0 7px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+@media (prefers-reduced-motion: reduce) { .pulse { animation: none; } }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); flex: none; }
+.dot.ok { background: var(--ok); } .dot.err { background: var(--err); }
+.pill-btn { display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px; border-radius: 9px; border: 1px solid var(--border); background: var(--surface); font-size: 12.5px; white-space: nowrap; }
+.pill-btn:hover { border-color: var(--border-strong); }
+.icon-btn { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 9px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); }
+.icon-btn:hover { color: var(--text); border-color: var(--border-strong); }
+.tabs { display: flex; gap: 4px; padding: 0 14px; height: 44px; align-items: stretch; overflow-x: auto; scrollbar-width: none; }
+.tabs a { display: flex; align-items: center; gap: 7px; padding: 0 10px; color: var(--muted); font-weight: 500; border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; }
+.tabs a:hover { color: var(--text); text-decoration: none; }
+.tabs a.active { color: var(--text); border-bottom-color: var(--primary); }
+.badge { font: 600 10.5px Inter, sans-serif; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 99px; display: inline-grid; place-items: center; background: var(--surface-2); color: var(--muted); }
+.badge.live { background: var(--primary); color: #fff; }
+
+/* ---------- common ---------- */
+.wrap { max-width: 1320px; margin: 0 auto; padding: 24px 20px 70px; }
+.page-head { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
+.page-head h1 { font-size: 22px; font-weight: 700; }
+.page-head p { color: var(--muted); margin-top: 3px; }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; }
+.card-h { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.card-h h2 { font-size: 14.5px; font-weight: 600; }
+.card-b { padding: 16px; }
+.grid { display: grid; gap: 16px; }
+.g-main { grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: 32px; padding: 0 13px; border-radius: 9px; border: 1px solid var(--border-strong); background: var(--card); font-weight: 500; font-size: 13px; white-space: nowrap; color: var(--text); }
+.btn:hover { border-color: var(--faint); text-decoration: none; }
+.btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.ghost { border-color: transparent; background: transparent; color: var(--muted); }
+.btn.ghost:hover { color: var(--text); background: var(--surface-2); }
+.btn.sm { height: 27px; padding: 0 9px; font-size: 12px; border-radius: 7px; }
+.btn.danger { color: var(--err); }
+.btn[disabled] { opacity: .55; cursor: progress; }
+.m { display: inline-flex; justify-content: center; font: 600 10px/1 "JetBrains Mono", monospace; padding: 4px 0; width: 46px; border-radius: 5px; flex: none; }
+.m.sm { width: 40px; font-size: 9.5px; padding: 3px 0; }
+.m.GET { color: var(--get); background: var(--get-bg); } .m.POST { color: var(--post); background: var(--post-bg); }
+.m.PUT { color: var(--put); background: var(--put-bg); } .m.PATCH { color: var(--patch); background: var(--patch-bg); }
+.m.DELETE { color: var(--delete); background: var(--delete-bg); }
+.status { font: 600 11.5px "JetBrains Mono", monospace; padding: 2px 7px; border-radius: 6px; white-space: nowrap; }
+.status.s2 { color: var(--ok); background: color-mix(in srgb, var(--ok) 14%, transparent); }
+.status.s3, .status.s4 { color: var(--warn); background: color-mix(in srgb, var(--warn) 15%, transparent); }
+.status.s5 { color: var(--err); background: color-mix(in srgb, var(--err) 14%, transparent); }
+.src { font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 99px; white-space: nowrap; }
+.src.app { color: var(--ok); background: color-mix(in srgb, var(--ok) 13%, transparent); }
+.src.console { color: var(--muted); background: var(--surface-2); }
+.jk { color: var(--j-key); } .js { color: var(--j-str); } .jn { color: var(--j-num); } .jb { color: var(--j-bool); } .jl { color: var(--j-null); }
+.input { width: 100%; height: 32px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--card); outline: none; font: 12.5px "JetBrains Mono", monospace; }
+.input:focus, textarea.code:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+select.input { font-family: Inter, sans-serif; font-size: 13px; }
+textarea.code { width: 100%; min-height: 260px; resize: vertical; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--border); background: var(--code-bg); font-size: 12.5px; line-height: 1.6; outline: none; tab-size: 2; white-space: pre; }
+pre.json { margin: 0; padding: 12px 14px; overflow: auto; font-size: 12px; line-height: 1.6; color: var(--text-2); background: var(--code-bg); }
+.empty { padding: 28px 16px; color: var(--faint); font-size: 13px; text-align: center; }
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 9px; padding: 2px; background: var(--surface); }
+.seg button { border: 0; background: none; padding: 4px 10px; border-radius: 7px; font-size: 12.5px; color: var(--muted); }
+.seg button.active { background: var(--card); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+.tw { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: 9px 14px; border-bottom: 1px solid var(--border); white-space: nowrap; vertical-align: middle; }
+th { font-weight: 600; color: var(--muted); font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; background: var(--surface); }
+tr:last-child td { border-bottom: 0; }
+td.mono { font-size: 12px; }
+tr.click { cursor: pointer; }
+tr.click:hover td { background: var(--surface); }
+tr.sel td { background: var(--primary-soft) !important; }
+.st { font: 600 11px "JetBrains Mono", monospace; padding: 2px 7px; border-radius: 6px; background: var(--surface-2); color: var(--text-2); }
+.st.BK { color: var(--post); background: var(--post-bg); } .st.OG { color: var(--put); background: var(--put-bg); }
+.st.CM, .st.CMNP { color: var(--get); background: var(--get-bg); } .st.CN, .st.NS, .st.RES { color: var(--delete); background: var(--delete-bg); }
+.st.PA { color: var(--patch); background: var(--patch-bg); }
+.actions { display: flex; gap: 6px; }
+.toast { position: fixed; right: 20px; bottom: 20px; z-index: 50; display: flex; flex-direction: column; gap: 8px; }
+.toast div { background: var(--text); color: var(--bg); padding: 10px 14px; border-radius: 10px; font-size: 13px; box-shadow: 0 10px 30px rgba(0,0,0,.2); max-width: 380px; animation: tin .18s ease-out; }
+@keyframes tin { from { transform: translateY(8px); opacity: 0; } }
+
+/* ---------- overview ---------- */
+.creds { display: grid; grid-template-columns: max-content minmax(0, 1fr) auto; }
+.creds > div { padding: 10px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; min-width: 0; font-size: 13px; }
+.creds > div:nth-last-child(-n+3) { border-bottom: 0; }
+.creds .k { color: var(--muted); font-size: 12.5px; }
+.creds .v { font: 12.5px "JetBrains Mono", monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.stat { padding: 14px 16px; border-bottom: 1px solid var(--border); border-right: 1px solid var(--border); }
+.stat:nth-child(2n) { border-right: 0; }
+.stat:nth-last-child(-n+2) { border-bottom: 0; }
+.stat .n { font-size: 24px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.stat .l { color: var(--muted); font-size: 12.5px; }
+.stat .sub { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 6px; }
+.progress { height: 6px; border-radius: 99px; background: var(--surface-2); overflow: hidden; flex: 1; max-width: 200px; min-width: 60px; }
+.progress div { height: 100%; background: var(--primary); border-radius: 99px; transition: width .3s; }
+.check { display: flex; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--border); align-items: flex-start; }
+.check:last-child { border-bottom: 0; }
+.check .ci { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--border-strong); flex: none; display: grid; place-items: center; font-size: 12px; margin-top: 1px; color: #fff; }
+.check.done .ci { background: var(--ok); border-color: var(--ok); }
+.check.next { background: var(--primary-soft); }
+.check.next .ci { border-color: var(--primary); }
+.check .ct { font-weight: 600; font-size: 13.5px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.check .cd { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+.check .cx { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+.check.done .ct { color: var(--text-2); font-weight: 500; }
+.feed-row { display: flex; align-items: center; gap: 10px; padding: 8px 16px; border-bottom: 1px solid var(--border); font-size: 12.5px; cursor: pointer; }
+.feed-row:hover { background: var(--surface); }
+.feed-row:last-child { border-bottom: 0; }
+.feed-row .p { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 12px "JetBrains Mono", monospace; color: var(--text-2); }
+.scen-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; padding: 16px; }
+.scen { border: 1px solid var(--border); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 6px; background: var(--card); }
+.scen.active { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+.scen .t { font-weight: 600; font-size: 13.5px; }
+.scen .d { color: var(--muted); font-size: 12.5px; flex: 1; }
+.scen .f { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+.runner { border-top: 1px solid var(--border); }
+.rstep { border-bottom: 1px solid var(--border); }
+.rstep:last-child { border-bottom: 0; }
+.rstep-h { display: flex; align-items: center; gap: 10px; padding: 9px 16px; font-size: 13px; }
+.rstep-h .n { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 600; background: var(--surface-2); color: var(--muted); flex: none; }
+.rstep.done .n { background: var(--ok); color: #fff; } .rstep.failed .n { background: var(--err); color: #fff; } .rstep.expected .n { background: var(--warn); color: #fff; }
+.rstep.running .n { background: var(--primary); color: #fff; }
+.rstep-h .t { font-weight: 500; white-space: nowrap; }
+.rstep-h .p { color: var(--muted); font: 12px "JetBrains Mono", monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; }
+.rstep-h .r { display: flex; gap: 8px; align-items: center; }
+.rstep .note { padding: 0 16px 9px 48px; font-size: 12px; color: var(--muted); margin-top: -4px; }
+.rstep pre.json { max-height: 240px; border-top: 1px solid var(--border); }
+details.more summary { cursor: pointer; list-style: none; padding: 14px 16px; font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+details.more summary::-webkit-details-marker { display: none; }
+details.more summary::before { content: "›"; color: var(--muted); transition: transform .15s; display: inline-block; }
+details.more[open] summary::before { transform: rotate(90deg); }
+ol.golive { margin: 0; padding: 0 16px 16px 38px; color: var(--text-2); }
+ol.golive li { padding: 5px 0; }
+
+/* ---------- console ---------- */
+.console-layout { display: grid; grid-template-columns: 290px minmax(0, 1fr); height: calc(100vh - 101px); }
+.eplist { border-right: 1px solid var(--border); background: var(--card); display: flex; flex-direction: column; min-height: 0; }
+.eplist .s { padding: 12px; border-bottom: 1px solid var(--border); }
+.eplist .items { overflow-y: auto; padding: 4px 8px 30px; flex: 1; }
+.eplist h4 { margin: 14px 8px 4px; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--faint); font-weight: 600; }
+.eplist a { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-radius: 7px; color: var(--text-2); font-size: 13px; line-height: 1.35; }
+.eplist a:hover { background: var(--surface-2); text-decoration: none; }
+.eplist a.active { background: var(--primary-soft); color: var(--primary-ink); font-weight: 500; }
+.eplist a .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.work { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); min-height: 0; }
+.pane { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+.pane + .pane { border-left: 1px solid var(--border); }
+.reqbar { display: flex; align-items: center; gap: 8px; padding: 12px 14px; border-bottom: 1px solid var(--border); background: var(--card); height: 59px; flex: none; }
+.reqbar .u { flex: 1; min-width: 0; height: 34px; display: flex; align-items: center; padding: 0 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); font: 12.5px "JetBrains Mono", monospace; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--text-2); }
+.reqbar .u span { overflow: hidden; text-overflow: ellipsis; }
+.reqbar .u .b { color: var(--faint); flex: none; }
+.hint { padding: 10px 14px; font-size: 12.5px; color: var(--muted); border-bottom: 1px solid var(--border); display: flex; gap: 10px; align-items: flex-start; background: var(--card); flex: none; }
+.hint .x { flex: 1; }
+.ptabs { display: flex; gap: 2px; padding: 0 8px; border-bottom: 1px solid var(--border); background: var(--card); flex: none; }
+.ptabs button { border: 0; background: none; padding: 10px 10px; font-size: 12.5px; font-weight: 500; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; display: flex; gap: 6px; align-items: center; }
+.ptabs button.active { color: var(--text); border-bottom-color: var(--primary); }
+.pbody { overflow: auto; flex: 1; min-height: 0; padding: 14px; }
+.kv-row { display: grid; grid-template-columns: minmax(110px, 32%) 1fr; gap: 4px 10px; align-items: center; padding: 6px 0; }
+.kv-row .k { font: 500 12.5px "JetBrains Mono", monospace; overflow: hidden; text-overflow: ellipsis; }
+.kv-row .k small { display: block; font: 11px Inter, sans-serif; color: var(--faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kv-row .res { grid-column: 2; font: 11.5px "JetBrains Mono", monospace; color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kv-row .res:empty { display: none; }
+.respbar { display: flex; align-items: center; gap: 10px; padding: 0 8px 0 14px; height: 59px; border-bottom: 1px solid var(--border); background: var(--card); flex: none; }
+.resp-body { flex: 1; min-height: 0; overflow: auto; background: var(--code-bg); }
+.resp-body pre.json { overflow: visible; }
+.saved { font-size: 12px; padding: 9px 14px; border-top: 1px solid var(--border); color: var(--text-2); background: var(--card); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; flex: none; }
+.saved code { font-size: 11px; }
+
+/* ---------- log ---------- */
+.logview { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 500px); gap: 16px; align-items: start; }
+.detail { position: sticky; top: 118px; max-height: calc(100vh - 140px); display: flex; flex-direction: column; overflow: hidden; }
+.detail .card-b { overflow: auto; }
+.detail h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--faint); margin: 14px 0 6px; }
+.detail h3:first-of-type { margin-top: 0; }
+.detail pre.json { border: 1px solid var(--border); border-radius: 10px; max-height: 340px; }
+details.del { border-bottom: 1px solid var(--border); }
+details.del:last-child { border-bottom: 0; }
+details.del summary { cursor: pointer; padding: 10px 16px; display: flex; align-items: center; gap: 10px; font-size: 13px; list-style: none; }
+details.del summary::-webkit-details-marker { display: none; }
+details.del pre.json { border-top: 1px solid var(--border); max-height: 360px; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 16px; padding: 12px 16px; font-size: 12px; color: var(--muted); border-top: 1px solid var(--border); }
+.legend span { display: inline-flex; gap: 6px; align-items: center; }
+
+@media (max-width: 1100px) {
+  .g-main, .logview { grid-template-columns: minmax(0, 1fr); }
+  .detail { position: static; max-height: none; }
+  .work { grid-template-columns: minmax(0, 1fr); }
+  .pane + .pane { border-left: 0; border-top: 1px solid var(--border); }
+  .console-layout { height: auto; }
+  .resp-body { max-height: 520px; }
+}
+@media (max-width: 800px) {
+  .console-layout { grid-template-columns: minmax(0, 1fr); }
+  .eplist { max-height: 300px; border-right: 0; border-bottom: 1px solid var(--border); }
+  .bar { padding: 0 14px; gap: 8px; } .env .lbl, .env .mono, .pill-btn .lbl, .bar > .chip.warn { display: none; }
+  .wrap { padding: 18px 14px 60px; }
+  .creds { grid-template-columns: minmax(0, 1fr) auto; } .creds .k { grid-column: 1 / -1; padding-bottom: 0; border-bottom: 0; }
+  .stats { grid-template-columns: minmax(0, 1fr); } .stat { border-right: 0; } .stat:nth-last-child(2) { border-bottom: 1px solid var(--border); }
+  .rstep-h .p { display: none; }
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="bar">
+    <a class="brand" href="#/overview">
+      <img class="logo-light" src="https://cdn.eka.care/vagus/clzwrv3o600260ti3bg9q1det.png" alt="eka.care" onerror="this.replaceWith(document.createTextNode('eka.care'))">
+      <img class="logo-dark" src="https://cdn.eka.care/vagus/clzws1tfc00270ti3eiwn5jo5.png" alt="eka.care" onerror="this.replaceWith(document.createTextNode('eka.care'))">
+      <span class="chip primary">Sandbox</span>
+    </a>
+    <span class="env" title="Point your integration at this base URL"><span class="pulse" id="envDot"></span><span class="lbl" id="envLbl">Running</span><span class="mono xs" id="envUrl"></span></span>
+    <span class="chip warn" title="Every record here is fictional">Test data</span>
+    <span class="spacer"></span>
+    <button class="pill-btn" id="authPill" title="Get a new access token"><span class="dot" id="authDot"></span><span class="lbl" id="authLbl">No token</span></button>
+    <button class="pill-btn" id="resetBtn" title="Restore the seed data"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2.5 8a5.5 5.5 0 1 0 1.6-3.9M2.5 2.5v3h3"/></svg><span class="lbl">Reset</span></button>
+    <button class="icon-btn" id="themeBtn" aria-label="Toggle theme"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13.5 9.5A5.5 5.5 0 0 1 6.5 2.5a5.5 5.5 0 1 0 7 7Z"/></svg></button>
+  </div>
+  <nav class="tabs" id="tabs">
+    <a href="#/overview" data-tab="overview">Overview</a>
+    <a href="#/console" data-tab="console">API Console</a>
+    <a href="#/log" data-tab="log">Request log <span class="badge" id="logBadge">0</span></a>
+    <a href="#/appointments" data-tab="appointments">Appointments</a>
+    <a href="#/webhooks" data-tab="webhooks">Webhooks</a>
+    <a href="#/data" data-tab="data">Test data</a>
+  </nav>
+</header>
+<main id="main"></main>
+<div class="toast" id="toast"></div>
+
+<script>window.EKA_CONFIG = /*__CONFIG__*/null;</script>
+<script src="/_sandbox/ui/endpoints.js"></script>
+<script>
+(function () {
+'use strict';
+const CFG = window.EKA_CONFIG || { defaults: {} };
+const EPS = window.EKA_ENDPOINTS;
+const BYID = Object.fromEntries(EPS.map((e) => [e.id, e]));
+const ORIGIN = location.origin;
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const CONSOLE_HDR = { 'x-sandbox-client': 'console' };
+const mlabel = (m) => (m === 'DELETE' ? 'DEL' : m);
+
+// ---------------- storage (per-viewer conveniences only) ----------------
+// Some embedded browsers (e.g. VS Code's Simple Browser) block localStorage; keep a copy in memory so the page still works.
+const mem = {};
+const store = {
+  get(k, d) {
+    if (k in mem) return mem[k];
+    try { const v = localStorage.getItem('eka-sbx:' + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; }
+  },
+  set(k, v) { mem[k] = v; try { localStorage.setItem('eka-sbx:' + k, JSON.stringify(v)); } catch (e) { /* storage blocked */ } },
+};
+
+// ---------------- theme ----------------
+function applyTheme(t) { if (t) document.documentElement.setAttribute('data-theme', t); else document.documentElement.removeAttribute('data-theme'); }
+applyTheme(store.get('theme', 'dark'));
+$('#themeBtn').onclick = () => {
+  const cur = document.documentElement.getAttribute('data-theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  const next = cur === 'dark' ? 'light' : 'dark'; applyTheme(next); store.set('theme', next);
+};
+$('#envUrl').textContent = ORIGIN.replace(/^https?:\/\//, '');
+
+// ---------------- variables ----------------
+const DEFAULTS = Object.assign({
+  client_id: CFG.clientId, client_secret: CFG.clientSecret, access_token: '', refresh_token: '',
+  doctor_id: '174159057723921', partner_doctor_id: 'test-doc-456', clinic_id: '67978400352a61001d64e9fb', partner_clinic_id: 'CL01',
+  patient_id: '174678912588402', oid: '174678912588401', appointment_id: 'api-sandbox-0000-0000-0000-000000000002',
+  prescription_id: 'P-DW-SANDBOX-0001', transaction_id: 'txn-sandbox-0001', emr_user_id: '176338032692057',
+  conf_id: '', schedule_id: '', start_date: '', end_date: '', slot_start: '',
+  new_clinic_id: '', new_doctor_id: '', new_user_id: '', new_schedule_id: '', block_id: '', webhook_id: '', admission_id: '',
+}, CFG.defaults || {});
+const DERIVED = {
+  baseUrl: () => ORIGIN, run_id: () => Date.now().toString(36).toUpperCase(),
+  slot_end: (v) => num(v.slot_start) + 900, slot_plus_1h: (v) => num(v.slot_start) + 3600, slot_plus_1h15: (v) => num(v.slot_start) + 4500,
+  follow_up_start: (v) => num(v.slot_start) + 7 * 86400, follow_up_end: (v) => num(v.slot_start) + 7 * 86400 + 900,
+};
+const VAR_HELP = {
+  access_token: 'Filled by login', refresh_token: 'Filled by login', doctor_id: 'Dr. Priya Sharma (seeded)', clinic_id: 'Bangalore clinic (seeded)',
+  patient_id: 'Set when you add a patient', oid: 'Set when you create a profile', appointment_id: 'Set when you book or reschedule',
+  prescription_id: 'Set when the doctor writes one', transaction_id: 'Set when the patient pays', conf_id: 'In-clinic service of doctor_id',
+  schedule_id: 'Seeded product-widget schedule', start_date: 'Next open day (IST)', slot_start: 'Epoch seconds; set by the slot API',
+};
+let saved = store.get('vars', {});
+let tokenExp = store.get('tokenExp', 0);
+function num(v) { return Number(v) || 0; }
+function vars() { return Object.assign({}, DEFAULTS, saved); }
+function getVar(name) { const v = vars(); if (DERIVED[name]) return String(DERIVED[name](v)); return v[name] === undefined ? undefined : String(v[name]); }
+function setVar(name, value) {
+  saved[name] = value; store.set('vars', saved);
+  if (name === 'access_token') { tokenExp = Date.now() + 29 * 60 * 1000; store.set('tokenExp', tokenExp); renderAuth(); }
+}
+function fill(str) { return String(str).replace(/\{\{\s*([$\w]+)\s*\}\}/g, (m, k) => { const v = getVar(k); return v === undefined ? m : v; }); }
+
+// ---------------- auth ----------------
+function hasToken() { return !!getVar('access_token') && Date.now() < tokenExp; }
+function renderAuth() {
+  $('#authDot').className = 'dot ' + (hasToken() ? 'ok' : '');
+  $('#authLbl').textContent = hasToken() ? 'Token active' : 'No token';
+}
+async function login() {
+  const r = await fetch(ORIGIN + '/connect-auth/v1/account/login', { method: 'POST', headers: { 'Content-Type': 'application/json', ...CONSOLE_HDR }, body: JSON.stringify({ client_id: getVar('client_id'), client_secret: getVar('client_secret') }) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok || !j.access_token) { toast('Login failed: check client_id and client_secret in Test data › Variables'); $('#authDot').className = 'dot err'; return false; }
+  setVar('access_token', j.access_token); setVar('refresh_token', j.refresh_token);
+  return true;
+}
+async function ensureToken() { if (hasToken()) return true; return login(); }
+$('#authPill').onclick = async () => { if (await login()) toast('New access token saved'); };
+renderAuth();
+
+// ---------------- requests ----------------
+const states = {};
+function pathParams(ep) { return [...ep.path.matchAll(/\{(\w+)\}/g)].map((m) => m[1]); }
+function bodyText(body) { return body === undefined ? '' : JSON.stringify(body, null, 2).replace(/"@(\{\{\w+\}\})"/g, '$1'); }
+function defaultState(ep, over = {}) {
+  const st = { path: {}, query: {}, headers: {}, body: bodyText(ep.body), force: '' };
+  for (const p of pathParams(ep)) st.path[p] = (ep.pathDefaults && ep.pathDefaults[p]) || `{{${p}}}`;
+  for (const q of ep.query || []) st.query[q[0]] = q[1];
+  for (const h of ep.headers || []) st.headers[h[0]] = h[1];
+  if (over.path) Object.assign(st.path, over.path);
+  if (over.query) Object.assign(st.query, over.query);
+  if (over.body !== undefined) st.body = typeof over.body === 'string' ? over.body : bodyText(over.body);
+  if (over.force) st.force = over.force;
+  return st;
+}
+function stateFor(ep) { return states[ep.id] || (states[ep.id] = defaultState(ep)); }
+function build(ep, st) {
+  let path = ep.path;
+  for (const p of pathParams(ep)) path = path.replace(`{${p}}`, encodeURIComponent(fill(st.path[p] || '')));
+  const qs = Object.entries(st.query).filter(([, v]) => v !== '' && v !== undefined).map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(fill(v))}`).join('&');
+  const url = ORIGIN + path + (qs ? '?' + qs : '');
+  const headers = {};
+  if (ep.auth !== false) {
+    if (ep.bearer) headers.Authorization = 'Bearer ' + (getVar('access_token') || '<access_token>');
+    else headers.auth = getVar('access_token') || '<access_token>';
+  }
+  if (ep.clientId) headers['client-id'] = getVar('client_id');
+  for (const [k, v] of Object.entries(st.headers)) if (v !== '') headers[k] = fill(v);
+  if (st.force) headers['x-sandbox-force-status'] = st.force;
+  let body;
+  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(ep.method) && st.body.trim()) { headers['Content-Type'] = 'application/json'; body = fill(st.body); }
+  return { method: ep.method, url, path: url.slice(ORIGIN.length), headers, body };
+}
+async function send(ep, st) {
+  if (ep.auth !== false && !(await ensureToken())) return { error: 'Could not get a token' };
+  const req = build(ep, st);
+  if (req.body !== undefined) { try { JSON.parse(req.body); } catch (e) { return { error: 'Body is not valid JSON: ' + e.message, req }; } }
+  const t0 = performance.now();
+  let res;
+  try { res = await fetch(req.url, { method: req.method, headers: { ...req.headers, ...CONSOLE_HDR }, body: req.body }); } catch (e) { return { error: 'Network error: ' + e.message, req }; }
+  const ms = Math.round(performance.now() - t0);
+  const text = await res.text();
+  let json = null; try { json = text ? JSON.parse(text) : null; } catch (e) { /* not JSON */ }
+  const out = { req, status: res.status, ms, size: text.length, text, json, headers: Object.fromEntries(res.headers.entries()), savedVars: [] };
+  if (res.ok && json && ep.capture) {
+    ep.capture(json, (k, v, quiet) => { if (v !== undefined && v !== null && v !== '') { setVar(k, String(v)); if (!quiet) out.savedVars.push([k, String(v)]); } });
+  }
+  renderAuth();
+  pollSoon();
+  return out;
+}
+function snippet(req, lang) {
+  const h = Object.entries(req.headers).map(([k, v]) => [k, k === 'auth' || k === 'Authorization' ? v.replace(/(Bearer )?(.{12}).+/, '$1$2…') : v]);
+  if (lang === 'curl') return [`curl -X ${req.method} '${req.url}'`, ...h.map(([k, v]) => `  -H '${k}: ${v}'`), ...(req.body ? [`  -d '${req.body.replace(/'/g, "'\\''")}'`] : [])].join(' \\\n');
+  if (lang === 'js') return `const res = await fetch('${req.url}', {\n  method: '${req.method}',\n  headers: ${JSON.stringify(Object.fromEntries(h), null, 2).replace(/\n/g, '\n  ')}${req.body ? `,\n  body: JSON.stringify(${req.body.replace(/\n/g, '\n  ')})` : ''}\n});\nconst data = await res.json();`;
+  return `import requests\n\nres = requests.request(\n    "${req.method}",\n    "${req.url}",\n    headers=${JSON.stringify(Object.fromEntries(h), null, 4).replace(/\n/g, '\n    ')}${req.body ? `,\n    json=${req.body.replace(/\btrue\b/g, 'True').replace(/\bfalse\b/g, 'False').replace(/\bnull\b/g, 'None').replace(/\n/g, '\n    ')}` : ''},\n)\nprint(res.status_code, res.json())`;
+}
+function highlight(text) {
+  return esc(text).replace(/(&quot;(?:[^&\\]|\\.|&(?!quot;))*?&quot;)(\s*:)?|\b(true|false)\b|\bnull\b|-?\b\d+(?:\.\d+)?(?:[eE][+-]?\d+)?\b/g, (m, str, colon, bool) => {
+    if (str) return colon ? `<span class="jk">${str}</span>${colon}` : `<span class="js">${str}</span>`;
+    if (bool) return `<span class="jb">${m}</span>`;
+    if (m === 'null') return `<span class="jl">${m}</span>`;
+    return `<span class="jn">${m}</span>`;
+  });
+}
+const pretty = (v) => (typeof v === 'string' ? (() => { try { return JSON.stringify(JSON.parse(v), null, 2); } catch (e) { return v; } })() : JSON.stringify(v, null, 2));
+const prettyOut = (out) => (out.json !== null ? JSON.stringify(out.json, null, 2) : (out.text || '(empty body)'));
+const sc = (s) => 's' + String(s)[0];
+const ago = (iso) => { const s = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 1000)); return s < 60 ? `${s}s ago` : s < 3600 ? `${Math.floor(s / 60)}m ago` : `${Math.floor(s / 3600)}h ago`; };
+const clock = (iso) => new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+function toast(msg) { const d = document.createElement('div'); d.textContent = msg; $('#toast').appendChild(d); setTimeout(() => d.remove(), 2800); }
+function copy(text, msg) {
+  const fallback = () => {
+    const ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    let ok = false; try { ok = document.execCommand('copy'); } catch (e) { /* not allowed */ }
+    ta.remove(); toast(ok ? (msg || 'Copied') : 'Copy is blocked here: select the text and copy it by hand');
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(() => toast(msg || 'Copied'), fallback);
+  else fallback();
+}
+
+// ---------------- live request log (polled) ----------------
+let LOG = [];
+let lastId = 0;
+let unseen = 0;
+let pollTimer = null;
+let online = true;
+async function poll() {
+  clearTimeout(pollTimer);
+  try {
+    const r = await fetch(`${ORIGIN}/_sandbox/requests?since=${lastId}`);
+    const j = await r.json();
+    // The sandbox restarted, so ids start again from 1: drop what we have and fetch everything.
+    if (j.latest < lastId) { LOG = []; lastId = 0; unseen = 0; store.set('seenId', 0); return poll(); }
+    const fresh = j.requests;
+    if (fresh.length) {
+      LOG = [...fresh, ...LOG].slice(0, 300);
+      lastId = LOG[0].id;
+      onLog(fresh);
+    }
+    setOnline(true);
+  } catch (e) { setOnline(false); }
+  pollTimer = setTimeout(poll, 1500);
+}
+function pollSoon() { clearTimeout(pollTimer); pollTimer = setTimeout(poll, 150); }
+function setOnline(v) {
+  if (v === online) return; online = v;
+  $('#envDot').className = 'pulse' + (v ? '' : ' off'); $('#envLbl').textContent = v ? 'Running' : 'Not reachable';
+}
+function renderBadge() {
+  const n = LOG.filter((e) => e.id > unseen).length;
+  const b = $('#logBadge'); b.textContent = n > 99 ? '99+' : String(n); b.classList.toggle('live', n > 0 && currentTab !== 'log');
+}
+const listeners = new Set();
+function onLog(newEntries) {
+  updateChecklist(newEntries);
+  if (currentTab === 'log') { unseen = lastId; store.set('seenId', unseen); }
+  renderBadge();
+  listeners.forEach((fn) => fn(newEntries));
+}
+
+// ---------------- integration checklist ----------------
+const CHECKS = [
+  { id: 'token', title: 'Get an access token', hint: 'POST /connect-auth/v1/account/login with your client_id and client_secret.', ep: 'authorization-client-login', test: (e) => e.route === 'POST /connect-auth/v1/account/login' && e.status === 200 },
+  { id: 'entities', title: 'Read your doctors and clinics', hint: 'GET /dr/v1/business/entities gives you the doctor_id and clinic_id to book against.', ep: 'business-workspace-get-clinic-and-doctor-details', test: (e) => e.route === 'GET /dr/v1/business/entities' && e.status < 300 },
+  { id: 'patient', title: 'Register a patient', hint: 'POST /dr/v1/patient (or /profiles/v1/patient) and keep the returned ID.', ep: 'patient-registration-add-patient-to-directory', test: (e) => /^POST \/(dr\/v1\/patient|profiles\/v1\/patient)$/.test(e.route) && e.status < 300 },
+  { id: 'slots', title: 'Fetch free slots', hint: 'GET …/doctor/{doctor_id}/clinic/{clinic_id}/appointment/slot for a date range.', ep: 'appointment-api-get-appointment-slots', test: (e) => /appointment\/slot$/.test(e.route || '') && e.status < 300 },
+  { id: 'book', title: 'Book an appointment', hint: 'POST /dr/v1/appointment with start_time in epoch seconds.', ep: 'appointment-api-book-appointment-slot', test: (e) => e.route === 'POST /dr/v1/appointment' && e.status === 201 },
+  { id: 'change', title: 'Reschedule or cancel', hint: 'PATCH /appointments/v1/{id}/reschedule or PUT /dr/v1/appointment/{id}/cancel.', ep: 'appointment-api-reschedule-appointment', test: (e) => /(reschedule|\/cancel|\/parked|change-status|^PATCH \/dr\/v[12]\/appointment\/:appointment_id$)/.test(e.route || '') && e.status < 300 },
+  { id: 'webhook', title: 'Register your webhook', hint: 'POST /notification/v1/connect/webhook/subscriptions with your URL and a signing_key.', ep: 'webhooks-register-webhook', test: (e) => e.route === 'POST /notification/v1/connect/webhook/subscriptions' && e.status === 201 },
+  { id: 'delivered', title: 'Receive a webhook on your server', hint: 'Book or change an appointment and check your server answered with a 2xx. Deliveries to the built-in receiver don\'t count.', ep: 'webhooks-register-webhook' },
+  { id: 'rx', title: 'Fetch a prescription', hint: 'Play the doctor in Appointments (Start consult, Write Rx), then GET /dr/v1/prescription/{id}.', ep: 'prescription-get-prescription-details', test: (e) => /^GET \/dr\/v1\/prescription\//.test(e.route || '') && e.status < 300 },
+  { id: 'refresh', title: 'Refresh an expired token', hint: 'POST /connect-auth/v1/account/refresh-token with the refresh token from login.', ep: 'authorization-refresh-token', test: (e) => e.route === 'POST /connect-auth/v1/account/refresh-token' && e.status === 200 },
+  { id: 'errors', title: 'Survive an error', hint: 'Send any call with the header x-sandbox-force-status: 500 (or 429) and make sure your app copes.', ep: 'business-workspace-get-clinic-and-doctor-details', test: (e) => e.forced },
+];
+let done = store.get('checks', {});
+let appOnly = store.get('appOnly', false);
+function updateChecklist(entries) {
+  let changed = false;
+  for (const e of [...entries].reverse()) {
+    if (appOnly && e.source !== 'app') continue;
+    for (const c of CHECKS) if (c.test && !done[c.id] && c.test(e)) { done[c.id] = { by: e.source, at: e.at }; changed = true; }
+  }
+  if (changed) { store.set('checks', done); if (currentTab === 'overview') renderChecklist(); }
+}
+function checkDeliveries(deliveries) {
+  if (done.delivered) return;
+  const d = deliveries.find((x) => x.response_status >= 200 && x.response_status < 300 && !/\/_sandbox\//.test(x.endpoint));
+  if (d) { done.delivered = { by: 'app', at: d.sent_at }; store.set('checks', done); if (currentTab === 'overview') renderChecklist(); }
+}
+
+// ---------------- scenarios ----------------
+// [endpoint id, title, note, expected-failure (true or message), overrides]
+const SCENARIOS = [
+  { id: 'quickstart', title: 'First booking', d: 'Token, doctors, slots, book, read it back.', steps: [
+    ['authorization-client-login', 'Get a token'], ['business-workspace-get-clinic-and-doctor-details', 'Doctors and clinics'],
+    ['appointment-api-get-appointment-slots', 'Free slots', 'First free slot saved as slot_start'], ['appointment-api-book-appointment-slot', 'Book it'],
+    ['appointment-api-get-appointment-details', 'Read it back', 'Status BK'],
+  ] },
+  { id: 'opd', title: 'Full visit with webhooks', d: 'Patient, booking, consult, prescription, payment, webhook inbox.', steps: [
+    ['webhooks-register-webhook', 'Register webhook', 'Built-in receiver, so no server needed', 'already registered'],
+    ['patient-registration-add-patient-to-directory', 'Register patient'], ['appointment-api-get-appointment-slots', 'Free slots'],
+    ['appointment-api-book-appointment-slot', 'Book', 'Fires appointment.created'], ['sandbox-controls-doctor-starts-consult', 'Doctor starts consult', 'Doctor action: BK → OG'],
+    ['sandbox-controls-doctor-writes-prescription', 'Doctor writes prescription', 'Doctor action: OG → CM'], ['prescription-get-prescription-details', 'Fetch prescription'],
+    ['sandbox-controls-patient-pays', 'Patient pays'], ['payment-get-transaction-status', 'Payment status'],
+    ['sandbox-controls-webhook-receiver-inbox', 'Webhook inbox', 'appointment.created, statuschange, prescription.created'],
+  ] },
+  { id: 'changes', title: 'Reschedule, park, cancel', d: 'Every change after booking, and the status each one sets.', steps: [
+    ['appointment-api-get-appointment-slots', 'Free slots'], ['appointment-api-book-appointment-slot', 'Book'],
+    ['appointment-api-reschedule-appointment', 'Reschedule', 'Old one becomes RES; a new appointment is created'], ['appointment-api-get-appointment-details', 'New appointment', 'Has prev_aids'],
+    ['appointment-api-reschedule-appointment-in-place-v1', 'Move in place (v1)'], ['appointment-api-parked-appointment', 'Park', 'PA'],
+    ['appointment-api-confirm-follow-up-appointment', 'Confirm follow-up', 'Back to BK'], ['appointment-api-cancel-appointment', 'Cancel', 'CN'],
+  ] },
+  { id: 'schedules', title: 'Schedules drive slots', d: 'Block time in the schedule and watch the slots change.', steps: [
+    ['schedules-get-service-conf-list', 'Doctor services'], ['schedules-get-resolved-schedule', 'Resolved schedule'],
+    ['appointment-api-get-appointment-slots', 'Slots before', '09:00 is free'], ['schedules-update-schedule', 'Block 09:00–11:00'],
+    ['appointment-api-get-appointment-slots', 'Slots after', 'Nothing before 11:00'],
+    ['schedules-update-schedule', 'Remove the block', null, null, { body: { deleteTimebounds: { block: ['{{block_id}}'] } } }],
+  ] },
+  { id: 'onboarding', title: 'Onboard a doctor', d: 'Your own clinic and doctor with partner IDs, then their slots.', steps: [
+    ['onboarding-create-clinic', 'Create clinic'],
+    ['onboarding-create-doctor-profile', 'Create doctor', null, null, { body: { firstname: 'Asha', lastname: 'Rao', gender: 'F', mobile: '9876500000', specialisations: ['Dermatologist'], clinic_ids: ['{{new_clinic_id}}'], partner_id: 'MY-DOC-{{run_id}}' } }],
+    ['business-workspace-get-clinic-and-doctor-details', 'In the workspace'],
+    ['appointment-api-get-appointment-slots', 'Their slots', 'Default hours until you give them a schedule', null, { path: { doctor_id: '{{new_doctor_id}}', clinic_id: '{{new_clinic_id}}' } }],
+  ] },
+  { id: 'errors', title: 'Errors your app must handle', d: 'Forced 500 and 429, bad timestamps, too-wide date ranges.', steps: [
+    ['business-workspace-get-clinic-and-doctor-details', 'Server error', null, true, { force: '500' }],
+    ['business-workspace-get-clinic-and-doctor-details', 'Rate limited', null, true, { force: '429' }],
+    ['appointment-api-book-appointment-slot', 'Milliseconds instead of seconds', null, true, { body: { doctor_id: '{{doctor_id}}', clinic_id: '{{clinic_id}}', patient_id: '{{patient_id}}', appointment_details: { start_time: 1767225600000 } } }],
+    ['appointment-api-get-appointments', 'Date range over 7 days', null, true, { query: { end_date: '2099-12-31' } }],
+  ] },
+];
+let activeScenario = null;
+
+// ---------------- router ----------------
+let currentTab = 'overview';
+let teardown = null;
+function route() {
+  const parts = (location.hash || '#/overview').slice(2).split('/');
+  const tab = parts[0] || 'overview';
+  if (teardown) { teardown(); teardown = null; }
+  const wasConsole = currentTab === 'console';
+  currentTab = tab;
+  $$('#tabs a').forEach((a) => a.classList.toggle('active', a.dataset.tab === tab));
+  if (tab === 'log') { unseen = lastId; store.set('seenId', unseen); }
+  renderBadge();
+  if (tab !== 'console' || !wasConsole) { $('#main').innerHTML = ''; window.scrollTo(0, 0); }
+  const views = { overview: renderOverview, console: () => renderConsole(parts[1]), log: () => renderLog(parts[1]), appointments: renderAppointments, webhooks: renderWebhooks, data: renderData };
+  (views[tab] || renderOverview)();
+  document.title = ({ overview: 'Overview', console: 'API Console', log: 'Request log', appointments: 'Appointments', webhooks: 'Webhooks', data: 'Test data' }[tab] || 'Overview') + ' · Eka Sandbox';
+}
+function listen(fn) { listeners.add(fn); teardown = () => listeners.delete(fn); }
+
+// ---------------- overview ----------------
+function renderOverview() {
+  $('#main').innerHTML = `<div class="wrap">
+    <div class="page-head"><div><h1>Your sandbox</h1><p>A local copy of the Eka Doc Tool APIs with test data. Point your app here, build against it, and watch every call arrive.</p></div></div>
+    <div class="grid g-main">
+      <div class="card"><div class="card-h"><h2>Connect your app</h2><span class="spacer"></span><span class="muted xs">Production: <code>https://api.eka.care</code> with your own credentials</span></div>
+        <div class="creds">
+          ${[['Base URL', ORIGIN], ['client_id', CFG.clientId], ['client_secret', CFG.clientSecret], ['Long-lived key', CFG.apiKey]].map(([k, v]) => `<div class="k">${k}</div><div class="v">${esc(v)}</div><div><button class="btn ghost sm" data-copy="${esc(v)}">Copy</button></div>`).join('')}
+        </div></div>
+      <div class="card" id="statsCard"><div class="card-h"><h2>Sandbox state</h2></div><div class="empty">Loading…</div></div>
+    </div>
+    <div class="grid g-main" style="margin-top:16px">
+      <div class="card" id="checkCard"></div>
+      <div class="card" style="align-self:start"><div class="card-h"><h2>Live activity</h2><span class="pulse"></span><span class="spacer"></span><a class="small" href="#/log">Request log →</a></div><div id="feed"></div></div>
+    </div>
+    <div class="card" style="margin-top:16px"><div class="card-h"><h2>Test scenarios</h2><span class="muted small">One click runs a whole flow against the sandbox. Every call also lands in the request log.</span></div>
+      <div class="scen-grid">${SCENARIOS.map((s) => `<div class="scen ${activeScenario === s.id ? 'active' : ''}" data-scen="${s.id}"><span class="t">${esc(s.title)}</span><span class="d">${esc(s.d)}</span><div class="f"><span class="faint xs">${s.steps.length} requests</span><span class="spacer"></span><button class="btn primary sm" data-run-scen="${s.id}">Run</button></div></div>`).join('')}</div>
+      <div id="runner"></div></div>
+    <div class="card" style="margin-top:16px"><details class="more"><summary>When it all works: going live</summary>
+      <ol class="golive">
+        <li>Get production credentials at <a href="https://console.eka.care" target="_blank" rel="noopener">console.eka.care</a> or from ekaconnect@eka.care.</li>
+        <li>Change the base URL to <code>https://api.eka.care</code> and swap in your credentials. Paths and payloads stay the same.</li>
+        <li>Replace the seeded IDs with your real ones from <code>GET /dr/v1/business/entities</code>.</li>
+        <li>Remove every <code>/_sandbox/…</code> call: in production the doctor starts consults and writes prescriptions in the Eka app.</li>
+        <li>Register a public HTTPS webhook URL (see <a href="https://developer.eka.care/api-reference/doc-tool/ip-allowlisting-for-clients" target="_blank" rel="noopener">IP allowlisting</a>).</li>
+        <li>Pilot with one doctor and one test patient, then go live. Full docs: <a href="https://developer.eka.care" target="_blank" rel="noopener">developer.eka.care</a>.</li>
+      </ol></details></div>
+  </div>`;
+  renderChecklist(); renderFeed();
+  $$('[data-run-scen]').forEach((b) => b.onclick = () => runScenario(b.dataset.runScen));
+  let t = null;
+  listen(() => { renderFeed(); clearTimeout(t); t = setTimeout(refreshStats, 300); });
+  refreshStats();
+}
+function renderChecklist() {
+  const card = $('#checkCard'); if (!card) return;
+  const n = CHECKS.filter((c) => done[c.id]).length;
+  const nextC = CHECKS.find((c) => !done[c.id]);
+  card.innerHTML = `<div class="card-h"><h2>Integration checklist</h2><span class="muted small">${n} of ${CHECKS.length}</span><div class="progress"><div style="width:${(n / CHECKS.length) * 100}%"></div></div><span class="spacer"></span>
+    <label class="small muted" style="display:flex;gap:6px;align-items:center;cursor:pointer" title="Only tick items when the call comes from your own app, not this console"><input type="checkbox" id="appOnly" ${appOnly ? 'checked' : ''}> Only my app</label>
+    <button class="btn ghost sm" id="clearChecks" title="Start the checklist over">Clear</button></div>
+    ${n === CHECKS.length ? '<div class="check next"><span class="ci" style="background:var(--ok);border-color:var(--ok)">✓</span><div><div class="ct">Everything works. Open "going live" at the bottom of this page.</div></div></div>' : ''}
+    <div>${CHECKS.map((c) => {
+      const d = done[c.id]; const isNext = c === nextC;
+      return `<div class="check ${d ? 'done' : ''} ${isNext ? 'next' : ''}"><span class="ci">${d ? '✓' : ''}</span><div style="flex:1;min-width:0">
+        <div class="ct">${esc(c.title)}${isNext ? '<span class="chip primary">Next step</span>' : ''}${d ? `<span class="src ${d.by}">${d.by === 'app' ? 'by your app' : 'in console'}</span><span class="faint xs">${ago(d.at)}</span>` : ''}</div>
+        ${!d ? `<div class="cd">${esc(c.hint)}</div>` : ''}
+        ${isNext ? `<div class="cx"><a class="btn primary sm" href="#/console/${c.ep}">Try it in the console</a>${c.id === 'rx' ? '<a class="btn sm" href="#/appointments">Play the doctor</a>' : ''}${c.id === 'delivered' ? '<a class="btn sm" href="#/webhooks">See deliveries</a>' : ''}</div>` : ''}
+      </div></div>`;
+    }).join('')}</div>`;
+  $('#appOnly').onchange = (e) => { appOnly = e.target.checked; store.set('appOnly', appOnly); };
+  $('#clearChecks').onclick = () => { done = {}; store.set('checks', done); renderChecklist(); };
+}
+function feedRow(e) {
+  return `<div class="feed-row" data-log="${e.id}"><span class="m sm ${e.method}">${mlabel(e.method)}</span><span class="p">${esc(e.path + (e.query || ''))}</span><span class="src ${e.source}">${e.source === 'app' ? 'your app' : 'console'}</span><span class="status ${sc(e.status)}">${e.status}</span><span class="faint xs" style="width:52px;text-align:right">${ago(e.at)}</span></div>`;
+}
+function renderFeed() {
+  const f = $('#feed'); if (!f) return;
+  f.innerHTML = LOG.length ? LOG.slice(0, 10).map(feedRow).join('') : `<div class="empty">No API calls yet.<br>Send one from your app to <code>${esc(ORIGIN)}</code>,<br>or run a scenario below.</div>`;
+  $$('[data-log]', f).forEach((r) => r.onclick = () => { location.hash = '#/log/' + r.dataset.log; });
+}
+async function refreshStats() {
+  if (!$('#statsCard')) return;
+  let s, del;
+  try { [s, del] = await Promise.all([fetch(ORIGIN + '/_sandbox/state').then((r) => r.json()), fetch(ORIGIN + '/_sandbox/webhooks/deliveries').then((r) => r.json())]); } catch (e) { return; }
+  const card = $('#statsCard'); if (!card) return;
+  checkDeliveries(del.deliveries);
+  const appts = Object.values(s.appointments);
+  const by = {}; appts.forEach((a) => { by[a.status] = (by[a.status] || 0) + 1; });
+  const ok = del.deliveries.filter((d) => d.response_status >= 200 && d.response_status < 300).length;
+  card.innerHTML = `<div class="card-h"><h2>Sandbox state</h2><span class="spacer"></span><a class="small" href="#/appointments">Appointments →</a></div>
+    <div class="stats">
+      <div class="stat"><div class="n">${appts.length}</div><div class="l">Appointments</div><div class="sub">${Object.entries(by).map(([k, v]) => `<span class="st ${k}">${k} ${v}</span>`).join('')}</div></div>
+      <div class="stat"><div class="n">${Object.values(s.patients).filter((p) => !p.arc).length}</div><div class="l">Patients</div></div>
+      <div class="stat"><div class="n">${Object.values(s.doctors).filter((d) => !d.deleted).length}<span class="muted" style="font-size:15px;font-weight:500"> / ${Object.values(s.clinics).filter((c) => !c.deleted).length}</span></div><div class="l">Doctors / clinics</div></div>
+      <div class="stat"><div class="n">${del.deliveries.length}</div><div class="l">Webhooks sent · ${Object.keys(s.webhooks).length} subscribed</div><div class="sub">${del.deliveries.length ? `<span class="status s2">${ok} ok</span>${del.deliveries.length - ok ? `<span class="status s5">${del.deliveries.length - ok} failed</span>` : ''}` : ''}</div></div>
+    </div>`;
+}
+async function runScenario(id) {
+  const scen = SCENARIOS.find((s) => s.id === id); activeScenario = id;
+  $$('.scen').forEach((el) => el.classList.toggle('active', el.dataset.scen === id));
+  $('#runner').innerHTML = `<div class="runner">${scen.steps.map(([epId, title, note], i) => { const ep = BYID[epId]; return `<div class="rstep" id="rs-${i}"><div class="rstep-h"><span class="n">${i + 1}</span><span class="m sm ${ep.method}">${mlabel(ep.method)}</span><span class="t">${esc(title)}</span><span class="p">${esc(ep.path)}</span><span class="r"></span><a class="btn ghost sm" href="#/console/${ep.id}">Open</a></div>${note ? `<div class="note">${esc(note)}</div>` : ''}<div class="o"></div></div>`; }).join('')}</div>`;
+  $$('[data-run-scen]').forEach((b) => { b.disabled = true; });
+  for (let i = 0; i < scen.steps.length; i++) {
+    const [epId, , , expected, over] = scen.steps[i]; const ep = BYID[epId];
+    let row = $('#rs-' + i); if (!row) return;
+    row.className = 'rstep running';
+    const out = await send(ep, defaultState(ep, over || {}));
+    row = $('#rs-' + i); if (!row) return;
+    const ok = !out.error && out.status < 400;
+    const isExp = !ok && !out.error && expected;
+    row.className = 'rstep ' + (ok ? 'done' : isExp ? 'expected' : 'failed');
+    row.querySelector('.p').textContent = out.req ? out.req.path : ep.path;
+    row.querySelector('.r').innerHTML = out.error ? '<span class="status s5">error</span>' : `${isExp ? `<span class="chip warn">${esc(typeof expected === 'string' ? expected : 'expected error')}</span>` : ''}<span class="status ${sc(out.status)}">${out.status}</span><span class="faint xs">${out.ms} ms</span>`;
+    row.querySelector('.o').innerHTML = out.error ? `<div class="note" style="color:var(--err)">${esc(out.error)}</div>` : `<details><summary class="note" style="cursor:pointer;list-style:none;color:var(--primary-ink)">Response${out.savedVars.length ? ` · saved ${out.savedVars.map(([k]) => k).join(', ')}` : ''}</summary><pre class="json">${highlight(prettyOut(out))}</pre></details>`;
+    if (!ok && !isExp) { toast(`Stopped at step ${i + 1}: see the response`); break; }
+  }
+  $$('[data-run-scen]').forEach((b) => { b.disabled = false; });
+  refreshStats();
+}
+
+// ---------------- console ----------------
+let codeLang = store.get('lang', 'curl');
+let reqTab = null;
+let currentEpId = null;
+const lastOut = {};
+function renderConsole(id) {
+  const ep = BYID[id] || BYID[currentEpId] || BYID[store.get('lastEp', '')] || EPS[0];
+  currentEpId = ep.id;
+  store.set('lastEp', ep.id);
+  if (!$('#epItems')) {
+    $('#main').innerHTML = `<div class="console-layout"><aside class="eplist"><div class="s"><input class="input" id="epSearch" placeholder="Filter ${EPS.length} endpoints" style="font-family:Inter,sans-serif"></div><div class="items" id="epItems"></div></aside><section class="work" id="work"></section></div>`;
+    const draw = (q) => {
+      let g = ''; let html = '';
+      for (const e of EPS) {
+        if (q && !(e.title + ' ' + e.path + ' ' + e.group).toLowerCase().includes(q)) continue;
+        if (e.group !== g) { g = e.group; html += `<h4>${esc(g)}</h4>`; }
+        html += `<a href="#/console/${e.id}" data-ep="${e.id}"><span class="m sm ${e.method}">${mlabel(e.method)}</span><span class="t" title="${esc(e.title)}">${esc(e.title)}</span></a>`;
+      }
+      $('#epItems').innerHTML = html || '<div class="empty">No match</div>';
+      $$('#epItems a').forEach((x) => x.classList.toggle('active', x.dataset.ep === currentEpId));
+    };
+    $('#epSearch').oninput = (e) => draw(e.target.value.trim().toLowerCase());
+    draw('');
+  }
+  $$('#epItems a').forEach((x) => x.classList.toggle('active', x.dataset.ep === ep.id));
+  const a = $(`#epItems a[data-ep="${ep.id}"]`); if (a) a.scrollIntoView({ block: 'nearest' });
+  reqTab = null;
+  renderWork(ep);
+}
+function renderWork(ep) {
+  const st = stateFor(ep);
+  const pp = pathParams(ep);
+  const hasBody = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(ep.method) && (ep.body !== undefined || st.body);
+  const nParams = pp.length + (ep.query || []).length;
+  const tabs = [['params', 'Params', nParams || null], ['headers', 'Headers', null], ...(hasBody ? [['body', 'Body', null]] : []), ['code', 'Code', null], ['simulate', 'Simulate error', st.force || null]];
+  if (!reqTab || !tabs.find((t) => t[0] === reqTab)) reqTab = hasBody ? 'body' : nParams ? 'params' : 'headers';
+  const resolved = (v) => { const f = fill(v); return `<div class="res">${f !== v ? '= ' + esc(f) : ''}</div>`; };
+  const row = (kind, name, value, meta) => `<div class="kv-row"><div class="k">${esc(name)}<small>${esc(meta)}</small></div><input class="input" data-kind="${kind}" data-name="${esc(name)}" value="${esc(value)}" spellcheck="false">${resolved(value)}</div>`;
+  const panes = {
+    params: () => nParams ? `${pp.map((p) => row('path', p, st.path[p], 'path')).join('')}${(ep.query || []).map((q) => row('query', q[0], st.query[q[0]], 'query' + (q[3] ? ' · required' : '') + (q[2] ? ' · ' + q[2] : ''))).join('')}` : '<div class="empty">No parameters</div>',
+    headers: () => `${ep.auth !== false ? `<div class="kv-row"><div class="k">${ep.bearer ? 'Authorization' : 'auth'}<small>added for you</small></div><div class="small muted">${hasToken() ? 'Your current access token' : 'A token is fetched when you send'}</div></div>` : ''}
+      ${ep.clientId ? `<div class="kv-row"><div class="k">client-id<small>added for you</small></div><div class="mono small">${esc(getVar('client_id'))}</div></div>` : ''}
+      ${Object.entries(st.headers).map(([k, v]) => row('headers', k, v, 'header')).join('')}
+      ${ep.auth === false && !ep.clientId && !Object.keys(st.headers).length ? '<div class="empty">No headers needed</div>' : ''}`,
+    body: () => `<textarea class="code" id="bodyEd" spellcheck="false">${esc(st.body)}</textarea><div class="small" style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap"><span class="muted"><code>{{name}}</code> comes from <a href="#/data">your variables</a></span><span class="spacer"></span><span id="bodyErr" style="color:var(--err)"></span><button class="btn sm" id="fmtBtn">Format</button><button class="btn sm" id="resetBody">Reset</button></div>`,
+    code: () => `<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px"><div class="seg">${[['curl', 'cURL'], ['js', 'JavaScript'], ['py', 'Python']].map(([k, t]) => `<button data-lang="${k}" class="${codeLang === k ? 'active' : ''}">${t}</button>`).join('')}</div><span class="spacer"></span><button class="btn sm" id="copyCode">Copy</button></div><pre class="json" style="border:1px solid var(--border);border-radius:10px" id="codeOut"></pre>`,
+    simulate: () => `<p class="small muted" style="margin-bottom:12px">Make this call fail on purpose to test your error handling. Your own app can do the same with the header <code>x-sandbox-force-status</code>.</p>
+      <div class="seg" style="flex-wrap:wrap">${['', '400', '401', '403', '404', '409', '429', '500', '503'].map((s) => `<button data-force="${s}" class="${st.force === s ? 'active' : ''}">${s || 'Real response'}</button>`).join('')}</div>`,
+  };
+  $('#work').innerHTML = `
+    <div class="pane">
+      <div class="reqbar"><span class="m ${ep.method}">${ep.method}</span><span class="u" id="urlOut"></span><button class="btn primary" id="sendBtn">Send</button></div>
+      <div class="hint"><span class="x"><b style="color:var(--text)">${esc(ep.title)}</b> · ${esc(ep.desc || '')}</span>${ep.docs ? `<a class="small" href="${esc(ep.docs)}" target="_blank" rel="noopener" style="white-space:nowrap">Docs ↗</a>` : '<span class="chip">Sandbox only</span>'}</div>
+      <div class="ptabs">${tabs.map(([k, t, n]) => `<button data-rt="${k}" class="${reqTab === k ? 'active' : ''}">${t}${n ? `<span class="badge">${esc(n)}</span>` : ''}</button>`).join('')}</div>
+      <div class="pbody" id="pbody">${panes[reqTab]()}</div>
+    </div>
+    <div class="pane" id="respPane"></div>`;
+  const refresh = () => {
+    const req = build(ep, st);
+    $('#urlOut').innerHTML = `<span class="b">${esc(ORIGIN)}</span><span>${esc(req.path)}</span>`;
+    if ($('#codeOut')) $('#codeOut').textContent = snippet(req, codeLang);
+  };
+  refresh();
+  renderResponse(ep, lastOut[ep.id]);
+  $$('.ptabs [data-rt]').forEach((b) => b.onclick = () => { reqTab = b.dataset.rt; renderWork(ep); });
+  $$('#pbody input.input').forEach((inp) => inp.addEventListener('input', () => {
+    st[inp.dataset.kind][inp.dataset.name] = inp.value; refresh();
+    const f = fill(inp.value); inp.nextElementSibling.textContent = f !== inp.value ? '= ' + f : '';
+  }));
+  const ed = $('#bodyEd');
+  if (ed) {
+    ed.addEventListener('input', () => { st.body = ed.value; refresh(); $('#bodyErr').textContent = ''; });
+    ed.addEventListener('keydown', (e) => { if (e.key === 'Tab') { e.preventDefault(); document.execCommand('insertText', false, '  '); } });
+    $('#fmtBtn').onclick = () => { try { ed.value = st.body = bodyText(JSON.parse(ed.value.replace(/(:\s*|\[\s*|,\s*)(\{\{\w+\}\})/g, '$1"@$2"'))); refresh(); } catch (e) { $('#bodyErr').textContent = 'Not valid JSON'; } };
+    $('#resetBody').onclick = () => { states[ep.id] = defaultState(ep); renderWork(ep); };
+  }
+  $$('[data-lang]').forEach((b) => b.onclick = () => { codeLang = b.dataset.lang; store.set('lang', codeLang); renderWork(ep); });
+  if ($('#copyCode')) $('#copyCode').onclick = () => copy(snippet(build(ep, st), codeLang), 'Copied (token shortened)');
+  $$('[data-force]').forEach((b) => b.onclick = () => { st.force = b.dataset.force; renderWork(ep); });
+  $('#sendBtn').onclick = async () => {
+    const b = $('#sendBtn'); b.disabled = true; b.textContent = 'Sending…';
+    const o = await send(ep, st);
+    lastOut[ep.id] = o;
+    if (!$('#sendBtn') || currentEpId !== ep.id || currentTab !== 'console') return;
+    b.disabled = false; b.textContent = 'Send';
+    if (o.error && $('#bodyErr')) $('#bodyErr').textContent = o.error;
+    renderResponse(ep, o); refresh();
+    // In a narrow window the response sits below the request: bring it into view.
+    const rp = $('#respPane'); const r = rp.getBoundingClientRect();
+    if (r.top > innerHeight - 80 || r.bottom < 0) rp.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+}
+document.addEventListener('keydown', (e) => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && currentTab === 'console' && $('#sendBtn')) { e.preventDefault(); $('#sendBtn').click(); } });
+let respTab = 'body';
+function renderResponse(ep, out) {
+  const p = $('#respPane'); if (!p) return;
+  if (!out) { p.innerHTML = `<div class="respbar"><b class="small">Response</b></div><div class="resp-body"><div class="empty">Press <b>Send</b> (or ⌘/Ctrl + Enter).<br>The response shows up here and in the request log.</div></div>`; return; }
+  if (out.error) { p.innerHTML = `<div class="respbar"><b class="small">Response</b></div><div class="resp-body"><div class="empty" style="color:var(--err)">${esc(out.error)}</div></div>`; return; }
+  const nexts = out.status < 400 ? (ep.next || []).map((id) => BYID[id]).filter(Boolean) : [];
+  const body = respTab === 'body' ? highlight(prettyOut(out)) : esc(Object.entries(out.headers).map(([k, v]) => `${k}: ${v}`).join('\n'));
+  p.innerHTML = `<div class="respbar"><span class="status ${sc(out.status)}">${out.status}</span><span class="muted small">${out.ms} ms · ${out.size > 1024 ? (out.size / 1024).toFixed(1) + ' KB' : out.size + ' B'}</span><span class="spacer"></span>
+      <div class="seg"><button data-resp="body" class="${respTab === 'body' ? 'active' : ''}">Body</button><button data-resp="headers" class="${respTab === 'headers' ? 'active' : ''}">Headers</button></div><button class="btn ghost sm" id="copyResp">Copy</button></div>
+    <div class="resp-body"><pre class="json">${body}</pre></div>
+    ${out.savedVars.length ? `<div class="saved">Saved for the next requests: ${out.savedVars.map(([k, v]) => `<code>${esc(k)}</code><span class="faint">=</span><code>${esc(v.length > 36 ? v.slice(0, 36) + '…' : v)}</code>`).join(' ')}</div>` : ''}
+    ${out.status === 401 && ep.auth !== false ? '<div class="saved">Token rejected. Click the token pill at the top to get a new one.</div>' : ''}
+    ${nexts.length ? `<div class="saved"><span class="muted">Next:</span>${nexts.map((n) => `<a class="btn sm" href="#/console/${n.id}"><span class="m sm ${n.method}">${mlabel(n.method)}</span>${esc(n.title)}</a>`).join('')}</div>` : ''}`;
+  $$('[data-resp]', p).forEach((b) => b.onclick = () => { respTab = b.dataset.resp; renderResponse(ep, out); });
+  $('#copyResp').onclick = () => copy(prettyOut(out), 'Response copied');
+}
+
+// ---------------- request log ----------------
+let logFilter = 'all';
+let logQuery = '';
+function epForRoute(route) {
+  return EPS.find((x) => route === `${x.method} ${x.path.replace(/\{(\w+)\}/g, ':$1').replace(/\/$/, '')}`) || null;
+}
+function renderLog(selId) {
+  $('#main').innerHTML = `<div class="wrap">
+    <div class="page-head"><div><h1>Request log</h1><p>Every API call the sandbox received, newest first, from your app and from this console. Updates live.</p></div><span class="spacer"></span>
+      <div class="seg" id="logSeg">${[['all', 'All'], ['app', 'Your app'], ['console', 'Console'], ['errors', 'Errors']].map(([k, t]) => `<button data-f="${k}" class="${logFilter === k ? 'active' : ''}">${t}</button>`).join('')}</div>
+      <input class="input" id="logQ" placeholder="Filter by path" style="width:190px;font-family:Inter,sans-serif" value="${esc(logQuery)}">
+      <button class="btn" id="logClear">Clear</button></div>
+    <div class="logview"><div class="card"><div class="tw" id="logTable"></div></div><div class="card detail" id="logDetail"></div></div></div>`;
+  let sel = Number(selId) || (LOG[0] && LOG[0].id) || null;
+  const draw = () => {
+    const rows = LOG.filter((e) => (logFilter === 'all' || (logFilter === 'errors' ? e.status >= 400 : e.source === logFilter)) && (!logQuery || e.path.includes(logQuery)));
+    $('#logTable').innerHTML = rows.length ? `<table><thead><tr><th>Time</th><th>Source</th><th>Request</th><th>Status</th><th style="text-align:right">ms</th></tr></thead><tbody>
+      ${rows.map((e) => `<tr class="click ${sel === e.id ? 'sel' : ''}" data-id="${e.id}"><td class="mono faint">${clock(e.at)}</td><td><span class="src ${e.source}">${e.source === 'app' ? 'your app' : 'console'}</span></td>
+        <td style="max-width:440px;overflow:hidden;text-overflow:ellipsis"><span class="m sm ${e.method}">${mlabel(e.method)}</span> <span class="mono" style="font-size:12px">${esc(e.path + (e.query || ''))}</span></td>
+        <td><span class="status ${sc(e.status)}">${e.status}</span>${e.forced ? ' <span class="chip warn">forced</span>' : ''}</td><td class="mono faint" style="text-align:right">${e.ms}</td></tr>`).join('')}</tbody></table>`
+      : `<div class="empty">${LOG.length ? 'Nothing matches this filter.' : `No API calls yet.<br>Send a request from your app to <code>${esc(ORIGIN)}</code>, or use the <a href="#/console">API Console</a>.`}</div>`;
+    $$('#logTable tr[data-id]').forEach((tr) => tr.onclick = () => { sel = Number(tr.dataset.id); history.replaceState(null, '', '#/log/' + sel); draw(); });
+    drawDetail();
+  };
+  const drawDetail = () => {
+    const e = LOG.find((x) => x.id === sel) || null;
+    const d = $('#logDetail');
+    if (!e) { d.innerHTML = '<div class="empty">Select a request to see its headers and bodies.</div>'; return; }
+    const ep = e.route ? epForRoute(e.route) : null;
+    d.innerHTML = `<div class="card-h"><span class="m ${e.method}">${e.method}</span><span class="mono small" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(e.path)}</span><span class="status ${sc(e.status)}">${e.status}</span></div>
+      <div class="card-b">
+        <div class="small muted" style="margin-bottom:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">${new Date(e.at).toLocaleString('en-IN')} · ${e.ms} ms <span class="src ${e.source}">${e.source === 'app' ? 'your app' : 'console'}</span>${e.route ? '' : '<span class="chip warn">no such endpoint</span>'}${e.forced ? '<span class="chip warn">forced error</span>' : ''}</div>
+        ${e.query ? `<h3>Query</h3><pre class="json">${esc(decodeURIComponent(e.query))}</pre>` : ''}
+        <h3>Request headers</h3><pre class="json">${highlight(JSON.stringify(e.request.headers, null, 2))}</pre>
+        ${e.request.body !== undefined ? `<h3>Request body</h3><pre class="json">${highlight(pretty(e.request.body))}</pre>` : ''}
+        <h3>Response body</h3><pre class="json">${e.response === undefined ? '(empty)' : highlight(pretty(e.response))}</pre>
+        ${ep ? `<div style="margin-top:12px"><a class="btn sm" href="#/console/${ep.id}">Open “${esc(ep.title)}” in the console</a></div>` : ''}
+      </div>`;
+  };
+  draw();
+  $$('#logSeg [data-f]').forEach((b) => b.onclick = () => { logFilter = b.dataset.f; $$('#logSeg button').forEach((x) => x.classList.toggle('active', x === b)); draw(); });
+  $('#logQ').oninput = (e) => { logQuery = e.target.value.trim(); draw(); };
+  $('#logClear').onclick = async () => { await fetch(ORIGIN + '/_sandbox/requests', { method: 'DELETE' }); LOG = []; lastId = 0; sel = null; draw(); renderBadge(); };
+  listen(() => { if (!sel && LOG[0]) sel = LOG[0].id; draw(); });
+}
+
+// ---------------- appointments ----------------
+const ist = (e) => e ? new Date(e * 1000).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+async function renderAppointments() {
+  if (!$('#apptCard')) {
+    $('#main').innerHTML = `<div class="wrap"><div class="page-head"><div><h1>Appointments</h1><p>Everything booked in the sandbox. In production the doctor acts in the Eka app; here you play the doctor with these buttons. Each action fires the real webhooks.</p></div><span class="spacer"></span><button class="btn" id="reload">Refresh</button></div><div class="card" id="apptCard"><div class="empty">Loading…</div></div></div>`;
+    $('#reload').onclick = renderAppointments;
+    let t = null; listen(() => { clearTimeout(t); t = setTimeout(renderAppointments, 300); });
+  }
+  const s = await fetch(ORIGIN + '/_sandbox/state').then((r) => r.json());
+  if (!$('#apptCard')) return;
+  const list = Object.values(s.appointments).sort((a, b) => b.created_at - a.created_at);
+  const cur = getVar('appointment_id');
+  $('#apptCard').innerHTML = `<div class="tw"><table><thead><tr><th>Status</th><th>Appointment</th><th>Doctor</th><th>Patient</th><th>Start (IST)</th><th>Prescription</th><th>Act as doctor / patient</th></tr></thead><tbody>
+    ${list.map((a) => {
+      const d = s.doctors[a.doctor_id] || {}; const p = s.patients[a.patient_id] || {};
+      const acts = [];
+      if (a.status === 'BK') acts.push(['start', 'Start consult']);
+      if (['BK', 'OG', 'PA'].includes(a.status)) acts.push(['rx', 'Write Rx']);
+      if (!['CN', 'RES'].includes(a.status) && !(a.payment && a.payment.payment_status === 'PAYMENT_SUCCESS')) acts.push(['pay', 'Pay']);
+      if (['BK', 'PA'].includes(a.status)) acts.push(['cancel', 'Cancel']);
+      return `<tr><td><span class="st ${a.status}">${a.status}</span></td>
+        <td class="mono" title="${esc(a.appointment_id)}">${esc(a.appointment_id.length > 24 ? a.appointment_id.slice(0, 24) + '…' : a.appointment_id)}${a.appointment_id === cur ? ' <span class="chip primary">in console</span>' : ''}${a.partner_appointment_id ? `<div class="faint xs">${esc(a.partner_appointment_id)}</div>` : ''}</td>
+        <td>Dr. ${esc(d.firstname || '')} ${esc(d.lastname || '')}</td><td>${esc(p.fln || a.patient_id)}</td><td>${esc(ist(a.start_time))}</td>
+        <td class="mono">${a.prescription_id ? esc(a.prescription_id) : '<span class="faint">—</span>'}</td>
+        <td><div class="actions">${acts.map(([k, t]) => `<button class="btn sm ${k === 'cancel' ? 'danger' : ''}" data-a="${k}" data-id="${esc(a.appointment_id)}">${t}</button>`).join('')}${a.appointment_id !== cur ? `<button class="btn ghost sm" data-a="use" data-id="${esc(a.appointment_id)}" title="Make this the appointment_id the console uses">Use in console</button>` : ''}</div></td></tr>`;
+    }).join('')}</tbody></table></div>
+    <div class="legend">${[['BK', 'Booked'], ['PA', 'Parked'], ['OG', 'Consult started'], ['CM', 'Completed with Rx'], ['CMNP', 'Completed, no Rx'], ['NS', 'No-show'], ['CN', 'Cancelled'], ['RES', 'Rescheduled (old)']].map(([k, t]) => `<span><span class="st ${k}">${k}</span>${t}</span>`).join('')}
+      <span class="faint">Production can also send IN, AB, NSD, NSS, CND, CNS, PC, PNR, RE and RED. Handle them too.</span></div>`;
+  $$('[data-a]').forEach((b) => b.onclick = async () => {
+    const id = b.dataset.id, k = b.dataset.a;
+    if (k === 'use') { setVar('appointment_id', id); toast('The console now uses this appointment'); return renderAppointments(); }
+    b.disabled = true;
+    let r;
+    if (k === 'start') r = await fetch(`${ORIGIN}/_sandbox/appointments/${id}/start`, { method: 'POST' });
+    if (k === 'rx') r = await fetch(`${ORIGIN}/_sandbox/appointments/${id}/prescription`, { method: 'POST' });
+    if (k === 'pay') r = await fetch(`${ORIGIN}/_sandbox/appointments/${id}/payment`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{"payment_status":"PAYMENT_SUCCESS"}' });
+    if (k === 'cancel') { await ensureToken(); r = await fetch(`${ORIGIN}/dr/v1/appointment/${id}/cancel`, { method: 'PUT', headers: { auth: getVar('access_token'), ...CONSOLE_HDR } }); }
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) toast((j.error && j.error.message) || `Failed (${r.status})`);
+    else {
+      if (j.prescription_id) { setVar('prescription_id', j.prescription_id); setVar('appointment_id', id); }
+      if (j.transaction_id) setVar('transaction_id', j.transaction_id);
+      toast({ start: 'Consult started (OG). Webhooks sent.', rx: `Prescription ${j.prescription_id || ''} written (CM)`, pay: 'Payment recorded', cancel: 'Cancelled (CN)' }[k]);
+    }
+    renderAppointments();
+  });
+}
+
+// ---------------- webhooks ----------------
+async function renderWebhooks() {
+  if (!$('#whBody')) {
+    $('#main').innerHTML = `<div class="wrap"><div class="page-head"><div><h1>Webhooks</h1><p>Who is subscribed, every delivery the sandbox attempted, and what the built-in receiver caught.</p></div><span class="spacer"></span>
+      <select class="input" id="evSel" style="width:auto">${['appointment.created', 'appointment.updated', 'appointment.statuschange', 'prescription.created', 'prescription.updated'].map((e) => `<option>${e}</option>`).join('')}</select>
+      <button class="btn primary" id="fire">Fire test event</button><button class="btn" id="reload">Refresh</button></div>
+      <div id="whBody"><div class="card"><div class="empty">Loading…</div></div></div></div>`;
+    $('#reload').onclick = renderWebhooks;
+    $('#fire').onclick = async () => {
+      const r = await fetch(ORIGIN + '/_sandbox/webhooks/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ event: $('#evSel').value }) });
+      const j = await r.json().catch(() => ({}));
+      toast(r.ok ? `Sent to ${(j.delivered_to || []).length} subscription(s)` : 'Failed');
+      setTimeout(renderWebhooks, 500);
+    };
+  }
+  await ensureToken();
+  const [subs, del, inbox] = await Promise.all([
+    fetch(ORIGIN + '/notification/v1/connect/webhook/subscriptions', { headers: { auth: getVar('access_token'), ...CONSOLE_HDR } }).then((r) => r.json()).catch(() => ({ data: [] })),
+    fetch(ORIGIN + '/_sandbox/webhooks/deliveries').then((r) => r.json()), fetch(ORIGIN + '/_sandbox/webhook-receiver').then((r) => r.json()),
+  ]);
+  if (!$('#whBody')) return;
+  checkDeliveries(del.deliveries);
+  $('#whBody').innerHTML = `
+    <div class="card"><div class="card-h"><h2>Subscriptions</h2><span class="spacer"></span><a class="btn sm" href="#/console/webhooks-register-webhook">Register one</a></div>
+      ${(subs.data || []).length ? `<div class="tw"><table><thead><tr><th>id</th><th>Endpoint</th><th>Events</th><th>Signed</th></tr></thead><tbody>${subs.data.map((w) => `<tr><td class="mono">${esc(w.id)}</td><td class="mono">${esc(w.endpoint)}${/\/_sandbox\//.test(w.endpoint) ? ' <span class="chip">built-in</span>' : ''}</td><td style="white-space:normal">${esc((w.event_names || []).join(', ') || 'all')}</td><td>${w.signing_key ? '✓' : '<span class="faint">no</span>'}</td></tr>`).join('')}</tbody></table></div>`
+      : `<div class="empty">No subscriptions. Register your server's URL, or <code>${esc(ORIGIN)}/_sandbox/webhook-receiver</code> to test without one.<br>From Docker, use <code>host.docker.internal</code> instead of localhost.</div>`}</div>
+    <div class="card" style="margin-top:16px"><div class="card-h"><h2>Deliveries</h2><span class="muted small">${del.deliveries.length}</span></div>
+      ${del.deliveries.slice(0, 80).map((d) => `<details class="del"><summary><span class="status ${sc(d.response_status || 500)}">${d.response_status || 'ERR'}</span><b>${esc(d.event)}</b><span class="mono faint xs" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(d.endpoint)}</span>${d.error ? `<span class="xs" style="color:var(--err)">${esc(d.error)}</span>` : ''}<span class="faint xs">${ago(d.sent_at)}</span></summary><pre class="json">${highlight(JSON.stringify(d, null, 2))}</pre></details>`).join('') || '<div class="empty">Nothing sent yet. Book or change an appointment, or fire a test event.</div>'}</div>
+    <div class="card" style="margin-top:16px"><div class="card-h"><h2>Built-in receiver inbox</h2><span class="muted small">${inbox.received.length}</span></div>
+      ${inbox.received.slice(0, 80).map((x) => `<details class="del"><summary><b>${esc((x.body && x.body.event) || 'event')}</b>${x.signature ? '<span class="chip ok">signed</span>' : ''}<span class="spacer"></span><span class="faint xs">${ago(x.received_at)}</span></summary><pre class="json">${highlight(JSON.stringify(x, null, 2))}</pre></details>`).join('') || '<div class="empty">Nothing received yet.</div>'}</div>
+    <div class="card" style="margin-top:16px"><details class="more"><summary>Verify the Eka-Webhook-Signature header</summary><div style="padding:0 16px 16px">
+      <p class="small muted" style="margin-bottom:10px">HMAC-SHA256 of <code>"&lt;t&gt;.&lt;raw body&gt;"</code> with your signing key, compared with <code>v1</code>. Use the raw request body, not re-serialised JSON.</p>
+      <pre class="json" style="border:1px solid var(--border);border-radius:10px">const crypto = require('crypto');
+function verify(rawBody, header, signingKey) {
+  const { t, v1 } = Object.fromEntries(header.split(',').map((kv) => kv.split('=')));
+  const expected = crypto.createHmac('sha256', signingKey).update(\`\${t}.\${rawBody}\`).digest('hex');
+  return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(v1));
+}</pre></div></details></div>`;
+}
+
+// ---------------- test data ----------------
+async function renderData() {
+  $('#main').innerHTML = `<div class="wrap"><div class="page-head"><div><h1>Test data</h1><p>Seeded records plus anything you created. These IDs are fixed, so you can hard-code them in your tests.</p></div></div><div id="dataBody"><div class="card"><div class="empty">Loading…</div></div></div></div>`;
+  const i = await fetch(ORIGIN + '/_sandbox/info').then((r) => r.json());
+  if (!$('#dataBody')) return;
+  const use = (k, v) => getVar(k) === v ? '<span class="chip primary">in console</span>' : `<button class="btn ghost sm" data-set="${k}" data-v="${esc(v)}">Use in console</button>`;
+  const table = (title, head, rows) => `<div class="card" style="margin-bottom:16px"><div class="card-h"><h2>${title}</h2><span class="muted small">${rows.length}</span></div><div class="tw"><table><thead><tr>${head.map((h) => `<th>${h}</th>`).join('')}<th></th></tr></thead><tbody>${rows.join('')}</tbody></table></div></div>`;
+  const v = vars();
+  $('#dataBody').innerHTML =
+    table('Doctors', ['doctor_id', 'partner_id', 'Name', 'Clinics'], i.doctors.map((d) => `<tr><td class="mono">${esc(d.id)}</td><td class="mono">${esc(d.partner_id || '')}</td><td>${esc(d.name)}</td><td class="mono faint">${esc(d.clinics.join(', '))}</td><td>${use('doctor_id', d.id)}</td></tr>`)) +
+    table('Clinics', ['clinic_id', 'partner_id', 'Name'], i.clinics.map((c) => `<tr><td class="mono">${esc(c.id)}</td><td class="mono">${esc(c.partner_id || '')}</td><td>${esc(c.name)}</td><td>${use('clinic_id', c.id)}</td></tr>`)) +
+    table('Patients', ['patient_id', 'partner_patient_id', 'Name', 'Mobile'], i.patients.map((p) => `<tr><td class="mono">${esc(p.oid)}</td><td class="mono">${esc(p.partner_patient_id || '')}</td><td>${esc(p.name)}</td><td class="mono">${esc(p.mobile)}</td><td>${use('patient_id', p.oid)}</td></tr>`)) +
+    `<div class="card"><div class="card-h"><h2>Console variables</h2><span class="muted small">Used as <code>{{name}}</code> in the API Console. Responses fill most of them in. Stored in this browser.</span><span class="spacer"></span><button class="btn sm" id="resetVars">Reset</button></div>
+      <div class="card-b">${Object.keys(DEFAULTS).map((k) => `<div class="kv-row"><div class="k">${esc(k)}<small>${esc(VAR_HELP[k] || '')}</small></div><input class="input" data-var="${esc(k)}" value="${esc(v[k] ?? '')}" spellcheck="false"></div>`).join('')}</div></div>`;
+  $$('[data-set]').forEach((b) => b.onclick = () => { setVar(b.dataset.set, b.dataset.v); toast(`${b.dataset.set} set`); renderData(); });
+  $$('[data-var]').forEach((inp) => inp.addEventListener('change', () => { setVar(inp.dataset.var, inp.value); toast(`Saved ${inp.dataset.var}`); }));
+  $('#resetVars').onclick = () => { saved = {}; store.set('vars', saved); tokenExp = 0; store.set('tokenExp', 0); renderAuth(); renderData(); toast('Variables reset'); };
+}
+
+// ---------------- global ----------------
+document.addEventListener('click', (e) => { const c = e.target.closest('[data-copy]'); if (c) copy(c.dataset.copy); });
+$('#resetBtn').onclick = async () => {
+  if (!confirm('Reset the sandbox? Appointments, patients, webhooks and the request log go back to the seed state.')) return;
+  await fetch(ORIGIN + '/_sandbox/reset', { method: 'POST' });
+  saved = {}; store.set('vars', saved); tokenExp = 0; store.set('tokenExp', 0); done = {}; store.set('checks', done);
+  LOG = []; lastId = 0; unseen = 0; store.set('seenId', 0);
+  Object.keys(states).forEach((k) => delete states[k]); Object.keys(lastOut).forEach((k) => delete lastOut[k]);
+  activeScenario = null; renderAuth(); toast('Sandbox reset to seed data'); $('#main').innerHTML = ''; route();
+};
+window.addEventListener('hashchange', route);
+route();
+poll();
+})();
+</script>
+</body>
+</html>
