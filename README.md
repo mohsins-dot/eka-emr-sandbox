@@ -15,8 +15,8 @@ It serves the same paths, headers and payloads as `https://api.eka.care`. Data y
 **Get the code.** Clone the repository, or download it as a ZIP with GitHub's **Code › Download ZIP** button and unzip it.
 
 ```bash
-git clone https://github.com/mohsins-dot/eka-api-sandbox.git
-cd eka-api-sandbox
+git clone https://github.com/mohsins-dot/eka-emr-sandbox.git
+cd eka-emr-sandbox
 ```
 
 **Start it.** Either option works. Node needs no `npm install`, because the sandbox has zero dependencies.
