@@ -30,7 +30,8 @@ function register(r) {
       clinics: Object.values(d.clinics).filter((x) => !x.deleted).map((x) => ({ id: x.id, partner_id: x.partner_id, name: x.name })),
       patients: Object.values(d.patients).filter((x) => !x.arc).map((x) => ({ oid: x.oid, partner_patient_id: x.partner_patient_id, name: x.fln, mobile: `${x.ccd}${x.mobile}` })),
       transactions: Object.keys(d.transactions),
-      appointment_status_codes: { BK: 'Booked', OG: 'Ongoing', CM: 'Completed with prescription', CMNP: 'Completed without prescription', CN: 'Cancelled', NS: 'No-show', PK: 'Parked (sandbox code)' },
+      // Codes the sandbox produces. Production also uses IN, AB, NSD, NSS, CND, CNS, PC, PNR, RE and RED (see README).
+      appointment_status_codes: { BK: 'Booked', PA: 'Parked', OG: 'Ongoing', CM: 'Completed with prescription', CMNP: 'Completed without prescription', NS: 'No-show', CN: 'Cancelled', RES: 'Rescheduled (old appointment; see next_aid)' },
     };
   }, open);
 
@@ -62,7 +63,7 @@ function register(r) {
   r.add('POST', '/_sandbox/appointments/:appointment_id/prescription', ({ params, body }) => {
     const a = store.findAppointment(params.appointment_id);
     if (!a) throw E.err(404, 'APPOINTMENT_NOT_FOUND', 'Appointment not found');
-    if (['CN', 'NS'].includes(a.status)) throw E.err(400, 'INVALID_REQUEST', `Cannot write a prescription for an appointment in status ${a.status}`);
+    if (['CN', 'NS', 'RES'].includes(a.status)) throw E.err(400, 'INVALID_REQUEST', `Cannot write a prescription for an appointment in status ${a.status}`);
     const d = store.db();
     const t = now();
     let rx = a.prescription_id && d.prescriptions[a.prescription_id];

@@ -70,6 +70,29 @@ function applyProfile(p, b) {
   p.u_ate = now();
 }
 
+const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+
+/** EMR users are the workspace's staff and doctors (ps: 'S'), keyed by their Eka id. */
+function findEmrUser(oid) {
+  const d = store.db();
+  const u = d.ekausers[oid] || d.doctors[oid];
+  return u && !u.deleted ? u : null;
+}
+
+function emrProfile(u) {
+  const d = store.db();
+  return clean({
+    oid: u.id, bid: d.business.business_id, ps: 'S', c_ate: u.created_at, u_ate: u.updated_at || u.created_at, gen: u.gender, dob: u.dob,
+    is_age: false, fn: u.firstname, mn: u.middlename || undefined, ln: u.lastname, fln: fullName(u.firstname, u.middlename, u.lastname),
+    bg: u.bg, mobile: u.mobile ? `+91${u.mobile}` : undefined, email: u.email || undefined, s: u.salutation,
+    extras: u.extras && Object.keys(u.extras).length ? u.extras : undefined,
+  });
+}
+
+function invalid(message) {
+  return new HttpError(400, { error: { message, code: 'invalid_request' } });
+}
+
 function notFoundProfile() {
   return new HttpError(404, { message: 'Not found', code: 'profile_not_found' });
 }
@@ -227,5 +250,48 @@ function register(r) {
   }, pd);
 }
 
-module.exports = register;
+function registerEmrUser(r) {
+  const pd = { clientIdHeader: true };
+
+  r.add('GET', '/profiles/v1/emr-user/:oid', ({ params }) => {
+    const u = findEmrUser(params.oid);
+    if (!u) throw notFoundProfile();
+    return emrProfile(u);
+  }, pd);
+
+  r.add('PATCH', '/profiles/v1/emr-user/:oid', ({ params, body }) => {
+    const u = findEmrUser(params.oid);
+    if (!u) throw notFoundProfile();
+    const b = body || {};
+    if (!Object.keys(b).length) throw invalid('Nothing to update');
+    if (b.gen !== undefined && !GENDERS.includes(b.gen)) throw invalid('Invalid Gender Enum');
+    if (b.dob !== undefined && !isValidDate(b.dob)) throw invalid('Invalid dob, expected YYYY-MM-DD');
+    if (b.bg !== undefined && !BLOOD_GROUPS.includes(b.bg)) throw invalid('Invalid Blood Group Enum');
+    if (b.mobile !== undefined && !/^\+91\d{10}$/.test(String(b.mobile))) throw invalid('mobile must be in E.164 format, e.g. +919876543210');
+    if (b.email !== undefined && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(b.email))) throw invalid('Invalid email');
+    if (b.fln !== undefined && !String(b.fln).trim()) throw invalid('fln cannot be empty');
+    if (b.fn !== undefined && !String(b.fn).trim()) throw invalid('fn cannot be empty');
+    if (b.extras !== undefined && (typeof b.extras !== 'object' || b.extras === null || Array.isArray(b.extras))) throw invalid('extras must be an object');
+    if (b.gen !== undefined) u.gender = b.gen;
+    if (b.dob !== undefined) u.dob = b.dob;
+    if (b.bg !== undefined) u.bg = b.bg;
+    if (b.email !== undefined) u.email = b.email;
+    if (b.s !== undefined) u.salutation = b.s;
+    if (b.mobile !== undefined) u.mobile = String(b.mobile).slice(-10);
+    if (b.extras !== undefined) u.extras = { ...(u.extras || {}), ...b.extras };
+    if (b.fln !== undefined && b.fn === undefined) {
+      const parts = String(b.fln).trim().split(/\s+/);
+      u.firstname = parts[0]; u.lastname = parts.length > 1 ? parts[parts.length - 1] : ''; u.middlename = parts.slice(1, -1).join(' ');
+    } else {
+      if (b.fn !== undefined) u.firstname = b.fn;
+      if (b.mn !== undefined) u.middlename = b.mn;
+      if (b.ln !== undefined) u.lastname = b.ln;
+    }
+    u.updated_at = now();
+    store.save();
+    return { message: 'Profile updated successfully' };
+  }, pd);
+}
+
+module.exports = (r) => { register(r); registerEmrUser(r); };
 module.exports.createFromDr = createFromDr;

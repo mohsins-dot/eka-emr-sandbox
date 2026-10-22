@@ -2,7 +2,7 @@
 const fs = require('fs');
 const path = require('path');
 const config = require('./config');
-const { seed } = require('./seed');
+const { seed, schedules } = require('./seed');
 
 let data = null;
 let saveTimer = null;
@@ -10,13 +10,26 @@ let saveTimer = null;
 function load() {
   if (config.persist && fs.existsSync(config.dataFile)) {
     try {
-      data = JSON.parse(fs.readFileSync(config.dataFile, 'utf8'));
+      data = migrate(JSON.parse(fs.readFileSync(config.dataFile, 'utf8')));
       return data;
     } catch (e) {
       console.warn(`[sandbox] Could not read ${config.dataFile} (${e.message}); reseeding.`);
     }
   }
   return reset();
+}
+
+/** Bring a data file written by an older sandbox version up to date. */
+function migrate(d) {
+  if ((d.meta && d.meta.version) >= 2) return d;
+  if (!d.schedules) d.schedules = schedules(Object.fromEntries(Object.entries(d.doctors).filter(([, x]) => !x.deleted && d.services[x.id])), d.services);
+  for (const list of Object.values(d.services)) for (const s of list) s.mode = s.mode.map((m) => (m === 'video' ? 'tele' : m));
+  for (const a of Object.values(d.appointments)) {
+    if (a.status === 'PK') a.status = 'PA';
+    if (a.rescheduled_to) { a.next_aid = a.rescheduled_to; delete a.rescheduled_to; if (a.status === 'CN') a.status = 'RES'; }
+  }
+  d.meta = { ...(d.meta || {}), version: 2 };
+  return d;
 }
 
 function reset() {

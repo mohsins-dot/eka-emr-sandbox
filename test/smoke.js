@@ -310,7 +310,8 @@ function addDays(s, n) {
     const r = await call('PATCH', `/appointments/v1/${apptId}/reschedule`, { token: T, body: { start_time: st() + 3600, end_time: st() + 4500 } });
     assert.strictEqual(r.status, 200); newApptId = r.body.appointment_id;
     assert.deepStrictEqual(r.body.prev_aids, [apptId]);
-    assert.strictEqual((await call('GET', `/dr/v1/appointment/${apptId}`, { token: T })).body.status, 'CN');
+    const old = (await call('GET', `/dr/v1/appointment/${apptId}`, { token: T })).body;
+    assert.strictEqual(old.status, 'RES'); assert.strictEqual(old.next_aid, newApptId);
     assert.strictEqual((await call('GET', '/dr/v1/appointment/PA-TEST-1?partner_id=1', { token: T })).body.appointment_id, newApptId);
   });
   await test('sandbox start -> OG, prescription -> CM', async () => {
@@ -338,6 +339,7 @@ function addDays(s, n) {
     const a1 = await mk(10800), a2 = await mk(11700), a3 = await mk(12600);
     assert.strictEqual((await call('POST', `/dr/v1/appointment/${a1}/change-status?partner_id=0`, { token: T, body: { status: 'NS' } })).status, 200);
     assert.strictEqual((await call('POST', `/dr/v1/appointment/${a2}/parked?partner_id=0`, { token: T })).status, 204);
+    assert.strictEqual((await call('GET', `/dr/v1/appointment/${a2}`, { token: T })).body.status, 'PA');
     assert.strictEqual((await call('PUT', `/dr/v1/appointment/${a3}/cancel?partner_id=0`, { token: T })).status, 204);
     assert.strictEqual((await call('PUT', `/dr/v1/appointment/${a2}/follow-up/confirm`, { token: T, body: { start_time: st() + 86400 * 7, end_time: st() + 86400 * 7 + 900 } })).status, 204);
     assert.strictEqual((await call('GET', `/dr/v1/appointment/${a2}`, { token: T })).body.status, 'BK');
@@ -345,6 +347,123 @@ function addDays(s, n) {
   await test('list by patient', async () => {
     const r = await call('GET', `/dr/v1/appointment?patient_id=${patientId}`, { token: T });
     assert.ok(r.body.appointments.length >= 4);
+  });
+
+  await test('reschedule in place (PUT v1)', async () => {
+    const b = await call('POST', '/dr/v1/appointment', { token: T, body: { partner_appointment_id: 'PA-PUT-1', clinic_id: CLINIC, doctor_id: DOC, patient_id: patientId, appointment_details: { start_time: st() + 13500 } } });
+    const id = b.body.appointment_id;
+    const r = await call('PUT', '/dr/v1/appointment/PA-PUT-1/reschedule?partner_id=1', { token: T, body: { start_time: st() + 14400, end_time: st() + 15300, partner_clinic_id: 'CL01', partner_doctor_id: 'test-doc-456' } });
+    assert.strictEqual(r.status, 204);
+    const g = (await call('GET', `/dr/v1/appointment/${id}`, { token: T })).body;
+    assert.strictEqual(g.start_time, st() + 14400); assert.strictEqual(g.status, 'BK');
+    await call('PUT', `/dr/v1/appointment/${id}/cancel?partner_id=0`, { token: T });
+    assert.strictEqual((await call('PUT', `/dr/v1/appointment/${id}/reschedule?partner_id=0`, { token: T, body: { start_time: st(), end_time: st() + 900 } })).status, 403);
+  });
+  await test('custom attributes merge', async () => {
+    const r = await call('PATCH', `/dr/v1/appointment/${newApptId}/custom_attribute?partner_id=0`, { token: T, body: { payment_status: ['paid'] } });
+    assert.strictEqual(r.status, 204);
+    const ca = (await call('GET', `/dr/v1/appointment/${newApptId}`, { token: T })).body.custom_attributes;
+    assert.deepStrictEqual(ca.payment_status, ['paid']); assert.deepStrictEqual(ca.label, ['vitals_submitted']);
+    assert.strictEqual((await call('PATCH', `/dr/v1/appointment/${newApptId}/custom_attribute?partner_id=0`, { token: T, body: {} })).status, 400);
+  });
+  await test('all appointments for a patient', async () => {
+    const r = await call('GET', `/dr/v1/appointment/patient/${patientId}`, { token: T });
+    assert.strictEqual(r.body.success, true); assert.ok(r.body.data.length >= 4);
+    assert.match(r.body.data[0].start_time, /^\d{4}-\d{2}-\d{2}T/);
+    const byPartner = (await call('GET', '/dr/v1/appointment/patient/EXT-NEW-9', { token: T })).body.data;
+    assert.ok(byPartner.some((a) => a.appointment_id === apptId && a.stage === 'RESCHEDULED'));
+  });
+
+  console.log('\nDoctor clinics, schedules & service-conf');
+  await test('clinics for doctor', async () => {
+    const r = await call('GET', `/v1/doctor/clinics/${DOC}`, { token: T });
+    assert.ok(r.body.data.clinics.some((c) => c.clinic_id === CLINIC));
+    assert.strictEqual((await call('GET', '/v1/doctor/clinics/000', { token: T })).status, 403);
+  });
+  let confId;
+  await test('service-conf list and details', async () => {
+    const r = await call('GET', `/schedule/service-conf/${DOC}`, { token: T });
+    assert.strictEqual(r.body.success, true); assert.ok(r.body.data.length >= 2);
+    assert.ok(r.body.data.every((c) => c.mode.every((m) => ['in-clinic', 'tele'].includes(m))));
+    confId = r.body.data.find((c) => c.mode.includes('in-clinic')).conf_id;
+    assert.strictEqual((await call('GET', `/schedule/service-conf/${DOC}/${confId}`, { token: T })).body.data.conf_id, confId);
+    assert.strictEqual((await call('GET', `/schedule/service-conf/${DOC}/nope`, { token: T })).status, 404);
+    assert.ok((await call('GET', `/schedule/service-conf/${CLINIC}`, { token: T })).body.data.length >= 2);
+  });
+  const range = `startTime=${day}T00:00:00%2B05:30&endTime=${addDays(day, 1)}T00:00:00%2B05:30`;
+  let seededSchedule;
+  await test('resolved schedule shows the seeded widget schedule', async () => {
+    const r = await call('GET', `/schedule/resolved?entity_id=${DOC}&location_id=${CLINIC}&product_id=product-widget&include_rules=true&${range}`, { token: T });
+    assert.strictEqual(r.status, 200);
+    const sch = r.body.data[DOC][0]; seededSchedule = sch.schedule_id;
+    const b = sch.schedule[day].bounds;
+    assert.strictEqual(b[0].s, `${day}T09:00:00.000+05:30`); assert.strictEqual(b[0].source, 'weekly');
+    assert.strictEqual(b[0].services[0].conf_id, confId);
+    assert.ok(sch.rules.weekly['1']);
+    assert.strictEqual((await call('GET', `/schedule/resolved?entity_id=${DOC}&${range}`, { token: T })).status, 400);
+    assert.strictEqual((await call('GET', `/schedule/resolved?entity_id=${DOC}&location_id=${CLINIC}&product_id=x&${range}`, { token: T })).status, 400);
+  });
+  await test('blocking the widget schedule removes slots', async () => {
+    const p = await call('PATCH', `/schedule/${seededSchedule}`, { token: T, body: { timebounds: { block: [{ start_date: day, end_date: day, start_time: '09:00', end_time: '10:00' }] } } });
+    assert.strictEqual(p.status, 200); const blockId = p.body.data.timebounds.block[0];
+    const slots = (await call('GET', `/dr/v1/doctor/${DOC}/clinic/${CLINIC}/appointment/slot?start_date=${day}&end_date=${day}`, { token: T })).body.data.schedule[CLINIC].slots;
+    assert.ok(!slots.some((x) => x.s === `${day}T09:00:00+05:30`)); assert.ok(slots.some((x) => x.s === `${day}T10:00:00+05:30`));
+    const d = await call('PATCH', `/schedule/${seededSchedule}`, { token: T, body: { deleteTimebounds: { block: [blockId] } } });
+    assert.deepStrictEqual(d.body.data.deleted.block, [blockId]);
+  });
+  await test('overbooking_limit frees a booked slot', async () => {
+    const slots = async () => (await call('GET', `/dr/v1/doctor/${DOC}/clinic/${CLINIC}/appointment/slot?start_date=${day}&end_date=${day}`, { token: T })).body.data.schedule[CLINIC].slots;
+    const free = [...(await slots())].reverse().find((x) => x.available);
+    const start = Math.floor(new Date(free.s).getTime() / 1000);
+    const id = (await call('POST', '/dr/v1/appointment', { token: T, body: { clinic_id: CLINIC, doctor_id: DOC, patient_id: patientId, appointment_details: { start_time: start, end_time: start + 900 } } })).body.appointment_id;
+    assert.strictEqual((await slots()).find((x) => x.s === free.s).available, false);
+    await call('PATCH', `/schedule/${seededSchedule}`, { token: T, body: { config: { overbooking_limit: 2 } } });
+    assert.strictEqual((await slots()).find((x) => x.s === free.s).available, true);
+    await call('PATCH', `/schedule/${seededSchedule}`, { token: T, body: { config: { overbooking_limit: 1 } } });
+    await call('PUT', `/dr/v1/appointment/${id}/cancel?partner_id=0`, { token: T });
+  });
+  let schedId;
+  await test('create schedule: validation and product-widget conflict', async () => {
+    const base = { name: 'Evening OPD', entity_id: DOC, location_id: CLINIC };
+    assert.strictEqual((await call('POST', '/schedule', { token: T, body: {} })).status, 400);
+    assert.strictEqual((await call('POST', '/schedule', { token: T, body: { ...base, timebounds: { weekly: { 1: { is_enabled: true, bounds: [{ s: 900, e: 1300, conf_ids: ['nope'] }] } } } } })).status, 400);
+    assert.strictEqual((await call('POST', '/schedule', { token: T, body: { ...base, config: { schedule_slot_config_enabled: true, slot_durations: [15] }, timebounds: { weekly: { 1: { bounds: [{ s: 900, e: 1300, conf_ids: [confId] }] } } } } })).status, 400);
+    assert.strictEqual((await call('POST', '/schedule', { token: T, body: { ...base, config: { schedule_slot_config_enabled: true } } })).status, 400);
+    assert.strictEqual((await call('POST', '/schedule', { token: T, body: { ...base, productMap: { 'product-widget': true } } })).status, 409);
+    const r = await call('POST', '/schedule', { token: T, body: { ...base, config: { slot_durations: [30, 15, 15] }, productMap: { 'product-emr': true },
+      timebounds: { daily: { [day]: { is_enabled: true, bounds: [{ s: 1800, e: 2100, conf_ids: [confId] }] } }, 'repeat-daily': [{ phase_index: 0, repeat_every: 2, anchor_date: day, bounds: [{ s: 700, e: 800, conf_ids: [confId] }] }] } } });
+    assert.strictEqual(r.status, 201); schedId = r.body.data.schedule_id;
+    assert.deepStrictEqual(r.body.data.config.slot_durations, [15, 30]);
+    assert.deepStrictEqual(r.body.data.assignment.products, ['product-emr']);
+    const res = await call('GET', `/schedule/resolved?entity_id=${DOC}&location_id=${CLINIC}&${range}`, { token: T });
+    const mine = res.body.data[DOC].find((x) => x.schedule_id === schedId);
+    assert.strictEqual(mine.schedule[day].bounds[0].source, 'daily');
+  });
+  await test('update and delete schedule', async () => {
+    assert.strictEqual((await call('PATCH', `/schedule/${schedId}`, { token: T, body: {} })).status, 400);
+    assert.strictEqual((await call('PATCH', '/schedule/nope', { token: T, body: { name: 'x' } })).status, 404);
+    assert.strictEqual((await call('PATCH', `/schedule/${schedId}`, { token: T, body: { archive: true, timebounds: { weekly: {} } } })).status, 409);
+    const r = await call('PATCH', `/schedule/${schedId}`, { token: T, body: { deleteTimebounds: { daily: ['bk_missing'] } } });
+    assert.strictEqual(r.status, 200); assert.ok(r.body.data.failed_tasks.length);
+    assert.strictEqual((await call('PATCH', `/schedule/${schedId}`, { token: T, body: { archive: true } })).body.data.archive, true);
+    assert.strictEqual((await call('PATCH', `/schedule/${schedId}`, { token: T, body: { name: 'y' } })).status, 409);
+    assert.strictEqual((await call('DELETE', `/schedule/${schedId}`, { token: T })).body.success, true);
+    assert.strictEqual((await call('DELETE', `/schedule/${schedId}`, { token: T })).status, 404);
+  });
+
+  console.log('\nEMR user');
+  const EMR = info.seeded_ids.ekauser;
+  await test('get and update EMR user profile', async () => {
+    const h = { 'client-id': client_id };
+    assert.strictEqual((await call('GET', `/profiles/v1/emr-user/${EMR}`, { token: T })).status, 400);
+    const g = await call('GET', `/profiles/v1/emr-user/${EMR}`, { token: T, headers: h });
+    assert.strictEqual(g.body.ps, 'S'); assert.strictEqual(g.body.oid, EMR);
+    assert.strictEqual((await call('PATCH', `/profiles/v1/emr-user/${EMR}`, { token: T, headers: h, body: { bg: 'Z+' } })).status, 400);
+    const u = await call('PATCH', `/profiles/v1/emr-user/${EMR}`, { token: T, headers: h, body: { fln: 'Front Desk Admin', bg: 'B+', mobile: '+919876543210' } });
+    assert.strictEqual(u.body.message, 'Profile updated successfully');
+    const g2 = (await call('GET', `/profiles/v1/emr-user/${EMR}`, { token: T, headers: h })).body;
+    assert.strictEqual(g2.fln, 'Front Desk Admin'); assert.strictEqual(g2.bg, 'B+'); assert.strictEqual(g2.mobile, '+919876543210');
+    assert.strictEqual((await call('GET', '/profiles/v1/emr-user/nope', { token: T, headers: h })).status, 404);
   });
 
   console.log('\nWebhook delivery & signature');

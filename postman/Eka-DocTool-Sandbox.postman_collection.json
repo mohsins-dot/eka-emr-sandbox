@@ -76,6 +76,18 @@
     {
       "key": "slot_plus_1h15",
       "value": ""
+    },
+    {
+      "key": "emr_user_id",
+      "value": "176338032692057"
+    },
+    {
+      "key": "conf_id",
+      "value": ""
+    },
+    {
+      "key": "schedule_id",
+      "value": ""
     }
   ],
   "event": [
@@ -392,6 +404,45 @@
                 "v1",
                 "doctor",
                 "service",
+                "{{doctor_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get clinics for doctor",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/doctor/clinics/{{doctor_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "doctor",
+                "clinics",
                 "{{doctor_id}}"
               ]
             }
@@ -1668,6 +1719,101 @@
           ]
         },
         {
+          "name": "Retrieve EMR user",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "client-id",
+                "value": "{{client_id}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/profiles/v1/emr-user/{{emr_user_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "profiles",
+                "v1",
+                "emr-user",
+                "{{emr_user_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update EMR user",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "client-id",
+                "value": "{{client_id}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/profiles/v1/emr-user/{{emr_user_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "profiles",
+                "v1",
+                "emr-user",
+                "{{emr_user_id}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fln\": \"Front Desk\",\n  \"bg\": \"B+\",\n  \"extras\": {\n    \"preferred_language\": \"en\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Archive patient profile",
           "request": {
             "method": "DELETE",
@@ -2048,6 +2194,156 @@
                   "key": "patient_id",
                   "value": "{{patient_id}}"
                 }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update appointment custom attributes",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/dr/v1/appointment/{{appointment_id}}/custom_attribute?partner_id=0",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "dr",
+                "v1",
+                "appointment",
+                "{{appointment_id}}",
+                "custom_attribute"
+              ],
+              "query": [
+                {
+                  "key": "partner_id",
+                  "value": "0"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"payment_status\": [\n    \"paid\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reschedule appointment in place (v1)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/dr/v1/appointment/{{appointment_id}}/reschedule?partner_id=0",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "dr",
+                "v1",
+                "appointment",
+                "{{appointment_id}}",
+                "reschedule"
+              ],
+              "query": [
+                {
+                  "key": "partner_id",
+                  "value": "0"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"start_time\": {{slot_plus_1h}},\n  \"end_time\": {{slot_plus_1h15}},\n  \"clinic_id\": \"{{clinic_id}}\",\n  \"doc_id\": \"{{doctor_id}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get all appointments for patient",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/dr/v1/appointment/patient/{{patient_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "dr",
+                "v1",
+                "appointment",
+                "patient",
+                "{{patient_id}}"
               ]
             }
           },
@@ -2563,6 +2859,292 @@
                   }
                 }
               ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Schedules & service-conf",
+      "item": [
+        {
+          "name": "Get service-conf list",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/schedule/service-conf/{{doctor_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "schedule",
+                "service-conf",
+                "{{doctor_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));",
+                  "if (pm.response.code < 300 && pm.response.text()) {",
+                  "  const j = pm.response.json();",
+                  "  const c = (j.data || []).find((x) => x.mode.includes('in-clinic'));",
+                  "  if (c) pm.collectionVariables.set('conf_id', c.conf_id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get service-conf details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/schedule/service-conf/{{doctor_id}}/{{conf_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "schedule",
+                "service-conf",
+                "{{doctor_id}}",
+                "{{conf_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get resolved schedule",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/schedule/resolved?entity_id={{doctor_id}}&location_id={{clinic_id}}&product_id=product-widget&startTime={{start_date}}T00:00:00%2B05:30&endTime={{end_date}}T23:59:59%2B05:30&applyBlock=true&include_rules=true",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "schedule",
+                "resolved"
+              ],
+              "query": [
+                {
+                  "key": "entity_id",
+                  "value": "{{doctor_id}}"
+                },
+                {
+                  "key": "location_id",
+                  "value": "{{clinic_id}}"
+                },
+                {
+                  "key": "product_id",
+                  "value": "product-widget"
+                },
+                {
+                  "key": "startTime",
+                  "value": "{{start_date}}T00:00:00%2B05:30"
+                },
+                {
+                  "key": "endTime",
+                  "value": "{{end_date}}T23:59:59%2B05:30"
+                },
+                {
+                  "key": "applyBlock",
+                  "value": "true"
+                },
+                {
+                  "key": "include_rules",
+                  "value": "true"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create schedule",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/schedule",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "schedule"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Evening OPD\",\n  \"entity_id\": \"{{doctor_id}}\",\n  \"location_id\": \"{{clinic_id}}\",\n  \"config\": {\n    \"overbooking_limit\": 1\n  },\n  \"timebounds\": {\n    \"weekly\": {\n      \"1\": {\n        \"is_enabled\": true,\n        \"bounds\": [\n          {\n            \"s\": 1800,\n            \"e\": 2100,\n            \"conf_ids\": [\n              \"{{conf_id}}\"\n            ]\n          }\n        ]\n      }\n    },\n    \"block\": [\n      {\n        \"start_date\": \"{{start_date}}\",\n        \"end_date\": \"{{end_date}}\",\n        \"start_time\": \"19:00\",\n        \"end_time\": \"20:00\"\n      }\n    ]\n  },\n  \"productMap\": {\n    \"product-emr\": true\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));",
+                  "if (pm.response.code < 300 && pm.response.text()) {",
+                  "  const j = pm.response.json();",
+                  "  if (j.data && j.data.schedule_id) pm.collectionVariables.set('schedule_id', j.data.schedule_id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update schedule",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/schedule/{{schedule_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "schedule",
+                "{{schedule_id}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Evening OPD (updated)\",\n  \"config\": {\n    \"overbooking_limit\": 2\n  },\n  \"timebounds\": {\n    \"daily\": {\n      \"{{end_date}}\": {\n        \"is_enabled\": true,\n        \"bounds\": [\n          {\n            \"s\": 1000,\n            \"e\": 1200,\n            \"conf_ids\": [\n              \"{{conf_id}}\"\n            ]\n          }\n        ]\n      }\n    }\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete schedule",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "auth",
+                "value": "{{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/schedule/{{schedule_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "schedule",
+                "{{schedule_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('succeeds (2xx)', () => pm.expect(pm.response.code).to.be.below(300));"
+                ]
+              }
             }
           ]
         }

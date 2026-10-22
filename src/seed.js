@@ -4,6 +4,7 @@
  * All people, phone numbers and emails below are fictional.
  */
 const crypto = require('crypto');
+const config = require('./config');
 const { now, istDate, istEpoch, addDays } = require('./util');
 
 const BUSINESS_ID = '77088166996724';
@@ -58,7 +59,7 @@ function services(doctorId, basePrice) {
       created_at: ts,
       currency: 'INR',
       duration: 15,
-      mode: ['video'],
+      mode: ['tele'],
       pre_pay: true,
       post_pay: false,
       price: basePrice - 100,
@@ -67,6 +68,33 @@ function services(doctorId, basePrice) {
       allow_patient_booking: true,
     },
   ];
+}
+
+/** One schedule per doctor per clinic, built from CLINIC_SESSIONS / CLOSED_WEEKDAYS and assigned to both products. */
+function schedules(doctors, svc) {
+  const toMil = (min) => Math.floor(min / 60) * 100 + (min % 60);
+  const ts = new Date().toISOString();
+  const out = {};
+  for (const doc of Object.values(doctors)) {
+    const conf = (svc[doc.id] || []).find((s) => s.mode.includes('in-clinic'));
+    if (!conf) continue;
+    for (const clinicId of doc.clinic_ids) {
+      const id = crypto.createHash('sha256').update(`schedule:${doc.id}:${clinicId}`).digest('hex').slice(0, 24);
+      const weekly = {};
+      for (let day = 0; day < 7; day++) {
+        const open = !config.closedWeekdays.includes(day);
+        weekly[day] = { is_enabled: open, bounds: open ? config.sessions.map((x) => ({ s: toMil(x.start), e: toMil(x.end), conf_ids: [conf.conf_id] })) : [] };
+      }
+      out[id] = {
+        schedule_id: id, business_id: BUSINESS_ID, name: `Dr. ${doc.firstname} ${doc.lastname} - OPD`, entity_id: doc.id, location_id: clinicId,
+        archive: false, default: true, userCreatedDefault: false,
+        config: { overbooking_limit: 1, block_over_existing_bookings: false, schedule_slot_config_enabled: false, slot_durations: [] },
+        rules: { weekly, daily: {}, 'repeat-weekly': [], 'repeat-daily': [], block: [] },
+        products: ['product-emr', 'product-widget'], createdAt: ts, updatedAt: ts,
+      };
+    }
+  }
+  return out;
 }
 
 function seed() {
@@ -183,9 +211,9 @@ function seed() {
   };
 
   return {
-    meta: { seeded_at: t, version: 1 },
+    meta: { seeded_at: t, version: 2 },
     business: { business_id: BUSINESS_ID, name: 'Eka Sandbox Hospitals Pvt Ltd' },
-    doctors, clinics, patients, services: svc, ekausers, appointments, prescriptions, transactions,
+    doctors, clinics, patients, services: svc, schedules: schedules(doctors, svc), ekausers, appointments, prescriptions, transactions,
     admissions: {}, webhooks: {}, webhookSeq: 0, deliveries: [], received: [], notifications: [], refreshTokens: {},
   };
 }
@@ -216,4 +244,4 @@ function samplePrescription({ prescription_id, appointment, doctor, patient, cli
   };
 }
 
-module.exports = { seed, samplePrescription, services, confId, IDS, BUSINESS_ID };
+module.exports = { seed, samplePrescription, services, schedules, confId, IDS, BUSINESS_ID };

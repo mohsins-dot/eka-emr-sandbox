@@ -5,10 +5,14 @@ const { E } = require('../router');
 const M = require('../models');
 const webhooks = require('../webhooks');
 const { createFromDr } = require('./patients');
+const { schedulesFor, resolveDay } = require('../schedule');
 const { uuid, now, istEpoch, istIso, istDate, isValidDate, daysBetween, addDays, splitMobile, dobFromAge } = require('../util');
 
 const MODES = ['INCLINIC', 'PHONE', 'VIDEO'];
+const RESCHEDULABLE = ['BK', 'OG', 'PA'];
 const ACTIVE = ['BK', 'OG'];
+// Statuses that still hold the doctor's time
+const HOLDS_SLOT = ['BK', 'OG', 'PA'];
 
 function newAppointmentId() {
   return `api-${uuid()}`;
@@ -28,14 +32,16 @@ function checkEpoch(v, name) {
   if (v > 1e12) throw badReq(`${name} looks like milliseconds (${v}); send epoch seconds`);
 }
 
-function isBusy(doctorId, s, e, ignoreId) {
-  return Object.values(store.db().appointments).some((a) => a.appointment_id !== ignoreId && a.doctor_id === doctorId && ACTIVE.includes(a.status) && a.start_time < e && a.end_time > s);
+function bookingsAt(doctorId, s, e) {
+  return Object.values(store.db().appointments).filter((a) => a.doctor_id === doctorId && HOLDS_SLOT.includes(a.status) && a.start_time < e && a.end_time > s).length;
 }
 
 /** Change status, persist and emit webhooks. */
 function setStatus(a, status, action) {
   a.status = status;
   a.modified_at = now();
+  if (status === 'OG') a.visit_start = a.modified_at;
+  if (['CM', 'CMNP'].includes(status)) a.visit_end = a.modified_at;
   store.save();
   webhooks.emit('appointment.updated', M.appointmentEvent(a, action), { service: 'appointment' });
   webhooks.emit('appointment.statuschange', M.appointmentEvent(a, action), { service: 'appointment' });
@@ -81,19 +87,35 @@ function register(r) {
 
     const svcs = (store.db().services[doc.id] || []).filter((s) => !s.archive);
     const primary = svcs.find((s) => s.mode.includes('in-clinic')) || svcs[0];
+    // Slots come from the doctor's product-widget schedule at this clinic; doctors without one use CLINIC_SESSIONS.
+    const sched = schedulesFor(doc.id, clinic.id, 'product-widget')[0];
+    const limit = sched ? sched.config.overbooking_limit : 1;
+    const svcById = Object.fromEntries(svcs.map((x) => [x.conf_id, x]));
     const t = now();
     const slots = [];
+    const push = (s, e, confId) => slots.push({ available: s > t && bookingsAt(doc.id, s, e) < limit, conf_id: confId, s: istIso(s), e: istIso(e) });
     for (let i = 0; i <= span; i++) {
       const date = addDays(start_date, i);
+      if (sched) {
+        for (const w of resolveDay(sched, date).windows) {
+          const slicers = sched.config.schedule_slot_config_enabled
+            ? [{ conf_id: primary ? primary.conf_id : null, minutes: sched.config.slot_durations[0] }]
+            : w.conf_ids.map((id) => svcById[id]).filter(Boolean).map((x) => ({ conf_id: x.conf_id, minutes: x.duration || config.slotMinutes }));
+          for (const c of slicers) {
+            for (let s = w.s; s + c.minutes * 60 <= w.e; s += c.minutes * 60) push(s, s + c.minutes * 60, c.conf_id);
+          }
+        }
+        continue;
+      }
       if (config.closedWeekdays.includes(new Date(date + 'T00:00:00Z').getUTCDay())) continue;
       for (const sess of config.sessions) {
         for (let m = sess.start; m + config.slotMinutes <= sess.end; m += config.slotMinutes) {
           const s = istEpoch(date, Math.floor(m / 60), m % 60);
-          const e = s + config.slotMinutes * 60;
-          slots.push({ available: s > t && !isBusy(doc.id, s, e), conf_id: primary ? primary.conf_id : null, s: istIso(s), e: istIso(e) });
+          push(s, s + config.slotMinutes * 60, primary ? primary.conf_id : null);
         }
       }
     }
+    slots.sort((x, y) => x.s.localeCompare(y.s));
     const services = {};
     for (const s of svcs) {
       services[s.conf_id] = {
@@ -247,6 +269,7 @@ function register(r) {
     const a = store.findAppointment(params.appointment_id, query.partner_id);
     if (!a) throw notFound(params.appointment_id);
     if (a.status === 'CN') throw E.err(403, 'CANCEL_NOT_ALLOWED', 'Appointment is already cancelled');
+    if (a.status === 'RES') throw E.err(403, 'CANCEL_NOT_ALLOWED', `Appointment was rescheduled to ${a.next_aid}; cancel that one instead`);
     if (['CM', 'CMNP'].includes(a.status)) throw E.err(403, 'CANCEL_NOT_ALLOWED', 'A completed appointment cannot be cancelled');
     setStatus(a, 'CN', 'cancelled');
     return { status: 204 };
@@ -256,7 +279,7 @@ function register(r) {
   r.add('POST', '/dr/v1/appointment/:appointment_id/complete', ({ params, query }) => {
     const a = store.findAppointment(params.appointment_id, query.partner_id);
     if (!a) throw notFound(params.appointment_id);
-    if (['CN', 'NS'].includes(a.status)) throw E.err(403, 'COMPLETE_NOT_ALLOWED', `An appointment in status ${a.status} cannot be completed`);
+    if (['CN', 'NS', 'RES'].includes(a.status)) throw E.err(403, 'COMPLETE_NOT_ALLOWED', `An appointment in status ${a.status} cannot be completed`);
     if (['CM', 'CMNP'].includes(a.status)) return { status: 204 };
     setStatus(a, a.prescription_id ? 'CM' : 'CMNP', 'completed');
     return { status: 204 };
@@ -267,7 +290,7 @@ function register(r) {
     const a = store.findAppointment(params.appointment_id, query.partner_id);
     if (!a) throw notFound(params.appointment_id);
     if (!ACTIVE.includes(a.status)) throw E.err(403, 'COMPLETE_NOT_ALLOWED', `An appointment in status ${a.status} cannot be parked`);
-    setStatus(a, 'PK', 'parked');
+    setStatus(a, 'PA', 'parked');
     return { status: 204 };
   });
 
@@ -277,7 +300,7 @@ function register(r) {
     if (!a) throw notFound(params.appointment_id);
     const status = body && body.status;
     if (status !== 'NS') throw E.err(400, 'INVALID_REQUEST', 'status must be "NS" (no-show)');
-    if (!['BK', 'PK'].includes(a.status)) throw E.err(400, 'INVALID_REQUEST', `Cannot mark an appointment in status ${a.status} as no-show`);
+    if (!['BK', 'PA'].includes(a.status)) throw E.err(400, 'INVALID_REQUEST', `Cannot mark an appointment in status ${a.status} as no-show`);
     setStatus(a, 'NS', 'no_show');
     return { status: 200, body: { status: 'success', appointment_id: a.appointment_id, appointment_status: 'NS' } };
   });
@@ -296,16 +319,63 @@ function register(r) {
     return { status: 204 };
   });
 
-  // ---------- Reschedule ----------
-  r.add('PATCH', '/appointments/v1/:appointment_id/reschedule', ({ params, body }) => {
-    const old = store.findAppointment(params.appointment_id);
-    if (!old) throw E.err(404, 'NOT_FOUND', `Appointment ${params.appointment_id} was not found`);
+  // ---------- Reschedule in place (v1) ----------
+  r.add('PUT', '/dr/v1/appointment/:appointment_id/reschedule', ({ params, query, body }) => {
+    const a = store.findAppointment(params.appointment_id, query.partner_id);
+    if (!a) throw notFound(params.appointment_id);
     const b = body || {};
     if (b.start_time === undefined || b.end_time === undefined) throw E.err(400, 'INVALID_REQUEST', 'start_time and end_time are required');
     checkEpoch(b.start_time, 'start_time');
     checkEpoch(b.end_time, 'end_time');
     if (b.end_time <= b.start_time) throw E.err(400, 'INVALID_REQUEST', 'end_time must be after start_time');
-    if (!ACTIVE.includes(old.status)) throw E.err(400, 'INVALID_REQUEST', `An appointment in status ${old.status} cannot be rescheduled`);
+    if (!['BK', 'PA'].includes(a.status)) throw E.err(403, 'RESCHEDULE_NOT_ALLOWED', `An appointment in status ${a.status} cannot be rescheduled`);
+    const docKey = b.doc_id || b.partner_doctor_id;
+    const clinicKey = b.clinic_id || b.partner_clinic_id;
+    const doc = docKey ? store.findDoctor(docKey) : store.db().doctors[a.doctor_id];
+    const clinic = clinicKey ? store.findClinic(clinicKey) : store.db().clinics[a.clinic_id];
+    if (!doc) throw E.err(400, 'INVALID_REQUEST', `Doctor ${docKey} not found`);
+    if (!clinic) throw E.err(400, 'INVALID_REQUEST', `Clinic ${clinicKey} not found`);
+    if (!doc.clinic_ids.includes(clinic.id)) throw E.err(400, 'INVALID_REQUEST', `Doctor ${doc.id} does not practice at clinic ${clinic.id}`);
+    a.doctor_id = doc.id; a.clinic_id = clinic.id; a.start_time = b.start_time; a.end_time = b.end_time;
+    a.status = 'BK';
+    a.modified_at = now();
+    store.save();
+    webhooks.emit('appointment.updated', M.appointmentEvent(a, 'modified'), { service: 'appointment' });
+    return { status: 204 };
+  });
+
+  // ---------- Update custom attributes ----------
+  r.add('PATCH', '/dr/v1/appointment/:appointment_id/custom_attribute', ({ params, query, body }) => {
+    const a = store.findAppointment(params.appointment_id, query.partner_id);
+    if (!a) throw notFound(params.appointment_id);
+    const b = body;
+    if (!b || typeof b !== 'object' || Array.isArray(b) || !Object.keys(b).length) throw E.err(400, 'INVALID_REQUEST', 'Body must be an object of custom attributes, e.g. {"payment_status": ["paid"]}');
+    a.custom_attributes = { ...(a.custom_attributes || {}), ...b };
+    a.modified_at = now();
+    store.save();
+    webhooks.emit('appointment.updated', M.appointmentEvent(a, 'modified'), { service: 'appointment' });
+    return { status: 204 };
+  });
+
+  // ---------- All appointments for a patient ----------
+  r.add('GET', '/dr/v1/appointment/patient/:patient_id', ({ params }) => {
+    const p = store.findPatient(params.patient_id, { includeArchived: true });
+    const pid = p ? p.oid : params.patient_id;
+    const list = Object.values(store.db().appointments).filter((a) => a.patient_id === pid).sort((x, y) => y.start_time - x.start_time);
+    return { success: true, data: list.map(M.patientAppointment) };
+  });
+
+  // ---------- Reschedule ----------
+  // Creates a new appointment; the old one becomes RES and points at it via next_aid.
+  r.add('PATCH', '/appointments/v1/:appointment_id/reschedule', ({ params, body }) => {
+    const b = body || {};
+    const old = store.findAppointment(params.appointment_id, b.partner_appointment_id ? '1' : undefined) || store.findAppointment(params.appointment_id);
+    if (!old) throw E.err(404, 'NOT_FOUND', `Appointment ${params.appointment_id} was not found`);
+    if (b.start_time === undefined || b.end_time === undefined) throw E.err(400, 'INVALID_REQUEST', 'start_time and end_time are required');
+    checkEpoch(b.start_time, 'start_time');
+    checkEpoch(b.end_time, 'end_time');
+    if (b.end_time <= b.start_time) throw E.err(400, 'INVALID_REQUEST', 'end_time must be after start_time');
+    if (!RESCHEDULABLE.includes(old.status)) throw E.err(400, 'INVALID_REQUEST', `An appointment in status ${old.status} cannot be rescheduled`);
     const d = store.db();
     if (b.partner_appointment_id && Object.values(d.appointments).some((x) => x.appointment_id !== old.appointment_id && x.partner_appointment_id === String(b.partner_appointment_id))) {
       throw E.err(409, 'CONFLICT', `Appointment ${b.partner_appointment_id} already exists`);
@@ -316,12 +386,12 @@ function register(r) {
       appointment_id: newAppointmentId(),
       partner_appointment_id: b.partner_appointment_id ? String(b.partner_appointment_id) : old.partner_appointment_id,
       status: 'BK', start_time: b.start_time, end_time: b.end_time, created_at: t, modified_at: t,
-      prev_aids: [...(old.prev_aids || []), old.appointment_id],
+      prev_aids: [...(old.prev_aids || []), old.appointment_id], next_aid: undefined,
     };
     old.partner_appointment_id = old.partner_appointment_id ? `${old.partner_appointment_id}#rescheduled` : null;
-    old.rescheduled_to = nu.appointment_id;
+    old.next_aid = nu.appointment_id;
     d.appointments[nu.appointment_id] = nu;
-    setStatus(old, 'CN', 'rescheduled');
+    setStatus(old, 'RES', 'rescheduled');
     webhooks.emit('appointment.created', M.appointmentEvent(nu, 'created'), { service: 'appointment' });
     return {
       appointment_id: nu.appointment_id, patient_id: nu.patient_id, doctor_id: nu.doctor_id, clinic_id: nu.clinic_id,

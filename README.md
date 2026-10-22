@@ -15,8 +15,8 @@ It serves the same paths, headers and payloads as `https://api.eka.care`. Data y
 **Get the code.** Clone the repository, or download it as a ZIP with GitHub's **Code › Download ZIP** button and unzip it.
 
 ```bash
-git clone https://github.com/mohsins-dot/eka-doctool-sandbox.git
-cd eka-doctool-sandbox
+git clone https://github.com/mohsins-dot/eka-api-sandbox.git
+cd eka-api-sandbox
 ```
 
 **Start it.** Either option works. Node needs no `npm install`, because the sandbox has zero dependencies.
@@ -64,9 +64,11 @@ curl -s http://localhost:4010/dr/v1/business/entities -H "auth: <access_token>"
 
 The sandbox accepts the token in either `auth: <token>` or `Authorization: Bearer <token>`. Access tokens expire after **30 minutes**, the same as in production. Refresh them with `POST /connect-auth/v1/account/refresh-token`.
 
+> **This sandbox or Eka's staging server?** Eka also runs a hosted staging environment at `https://api.dev.eka.care`, which needs staging credentials from Eka. Use this sandbox to build and test on your own machine or in CI: it needs no account, you can reset it, and it lets you play the doctor's side (section 5) and force errors (section 7). Use staging, or a production test workspace, for the final check before going live (section 10).
+
 ### Postman
 
-Import `postman/Eka-DocTool-Sandbox.postman_collection.json`. It has 70 requests covering every endpoint, grouped by API. Run **Auth › Login** first; it saves the token for all other requests. The whole collection also runs top to bottom with the Collection Runner or `newman`.
+Import `postman/Eka-DocTool-Sandbox.postman_collection.json`. It has 82 requests covering every endpoint, grouped by API. Run **Auth › Login** first; it saves the token for all other requests. The whole collection also runs top to bottom with the Collection Runner or `newman`.
 
 ## 3. Seeded test data
 
@@ -95,7 +97,11 @@ These IDs are fixed, so you can hard-code them in your tests. Every entity also 
 * Appointment `…000000000002` is booked for tomorrow.
 * Transactions: `txn-sandbox-0001` (success), `txn-sandbox-0002` (failed), `txn-sandbox-0003` (pending).
 
-**Slots:** Mon–Sat, 09:00–13:00 and 17:00–20:00 IST, 15 minutes each. A slot shows as unavailable once it is booked.
+**Schedules:** each doctor has one schedule per clinic, assigned to both `product-emr` and `product-widget`: Mon–Sat, 09:00–13:00 and 17:00–20:00 IST, for the in-clinic consultation service (15 minutes). Get their IDs from `GET /schedule/resolved`.
+
+**Slots** come from the doctor's `product-widget` schedule at that clinic, so they are 15 minutes each by default. A slot shows as unavailable once it is booked (or once `overbooking_limit` bookings overlap it).
+
+**EMR user:** `176338032692057` (the front-desk user). Doctor IDs also work with the EMR user APIs.
 
 ## 4. Supported endpoints
 
@@ -103,12 +109,13 @@ These IDs are fixed, so you can hard-code them in your tests. Every entity also 
 |---|---|
 | Auth | `POST /connect-auth/v1/account/login`, `POST /connect-auth/v1/account/refresh-token` |
 | Workspace | `GET /cdr/v1/get_business_info/`, `GET /dr/v1/business/entities` |
-| Doctor & clinic | `GET /dr/v1/doctor/{id}`, `GET /dr/v1/business/clinic/{id}`, `GET /dr/v1/doctor/service/{id}` |
+| Doctor & clinic | `GET /dr/v1/doctor/{id}`, `GET /dr/v1/business/clinic/{id}`, `GET /dr/v1/doctor/service/{id}`, `GET /v1/doctor/clinics/{id}` |
 | Onboarding | `POST/GET /cdr/v1/doctor/`, `GET/PATCH/DELETE /cdr/v1/doctor/{id}/`; the same for `/cdr/v1/clinic/` and `/cdr/v1/ekauser/` |
 | HIP users | `GET /cdr/v1/hipusers/`, `GET /cdr/v1/hipusers/{id}` |
 | Patient registration | `POST /dr/v1/patient`, `GET/PATCH /dr/v1/patient/{id}`, `GET /dr/v1/business/patients/search?mobile=` |
-| Patient directory | `POST /profiles/v1/patient/`, `GET/PATCH/DELETE /profiles/v1/patient/{oid}`, `GET …/minified/`, `GET …/search`, `GET …/by-mobile/`, `GET …/{username}/username/` (all need the `client-id` header) |
-| Appointments | `GET /dr/v1/doctor/{d}/clinic/{c}/appointment/slot`, `POST /dr/v1/appointment`, `GET /dr/v1/appointment`, `GET/PATCH /dr/v1/appointment/{id}`, `PATCH /dr/v2/appointment/{id}`, `PUT …/{id}/cancel`, `POST …/{id}/complete`, `POST …/{id}/parked`, `POST …/{id}/change-status`, `PUT …/{id}/follow-up/confirm`, `PATCH /appointments/v1/{id}/reschedule` |
+| Patient directory | `POST /profiles/v1/patient/`, `GET/PATCH/DELETE /profiles/v1/patient/{oid}`, `GET …/minified/`, `GET …/search`, `GET …/by-mobile/`, `GET …/{username}/username/`, `GET/PATCH /profiles/v1/emr-user/{oid}` (all need the `client-id` header) |
+| Appointments | `GET /dr/v1/doctor/{d}/clinic/{c}/appointment/slot`, `POST /dr/v1/appointment`, `GET /dr/v1/appointment`, `GET/PATCH /dr/v1/appointment/{id}`, `PATCH /dr/v2/appointment/{id}`, `PUT …/{id}/cancel`, `POST …/{id}/complete`, `POST …/{id}/parked`, `POST …/{id}/change-status`, `PUT …/{id}/follow-up/confirm`, `PUT …/{id}/reschedule`, `PATCH …/{id}/custom_attribute`, `GET /dr/v1/appointment/patient/{patient_id}`, `PATCH /appointments/v1/{id}/reschedule` |
+| Schedules | `POST /schedule`, `PATCH/DELETE /schedule/{id}`, `GET /schedule/resolved`, `GET /schedule/service-conf/{entity_id}`, `GET /schedule/service-conf/{entity_id}/{conf_id}` |
 | Prescription | `GET /dr/v1/prescription/{id}` |
 | Payments | `GET /dr/v1/payment/transaction_status/{id}` |
 | IPD | `POST /appointments/v1/ipd/admission`, `GET /appointments/v1/ipd/admission/{id}` |
@@ -121,6 +128,13 @@ Wherever the real API takes `?partner_id=1`, the sandbox does too. Validation mi
 * The appointment list checks the filter combinations and allows a range of at most 7 days.
 * A `partner_*_id` that already exists returns 409.
 * The doctor must practise at the clinic being booked.
+* Schedules enforce the documented rules. A duration-based schedule (`schedule_slot_config_enabled: true`) needs `slot_durations` and rejects `conf_ids`. A service-based one needs `conf_ids` that the doctor owns. Only one `product-widget` schedule is allowed per doctor and clinic (409). Archiving can't be combined with other changes (409).
+
+### Schedules and slots
+
+A schedule holds rules in IST: `weekly`, `daily`, `repeat-weekly`, `repeat-daily` and `block`. When the sandbox resolves a date, the first rule type that has an entry for it wins, in this order: `daily`, `repeat-daily`, `repeat-weekly`, `weekly`. Blocks are then cut out of the windows.
+
+The slot API reads the doctor's `product-widget` schedule at the clinic. A service-based window is sliced by each service's `duration`, and a duration-based schedule by its first `slot_durations` value. A slot is available until `overbooking_limit` bookings overlap it. So a block, a daily override or a new limit sent with `PATCH /schedule/{id}` shows up straight away in `…/appointment/slot`. A doctor created with the onboarding APIs has no schedule until you create one; until then, slots fall back to `CLINIC_SESSIONS`.
 
 ## 5. Things that happen on the doctor's side
 
@@ -143,8 +157,22 @@ In production, a doctor starts a consultation and writes a prescription in the E
 BK (booked) ──start──▶ OG (ongoing) ──prescription──▶ CM (completed with Rx)
    │                                   └──complete──▶ CMNP (completed without Rx)
    ├──cancel──▶ CN        ├──change-status NS──▶ NS (no-show)
-   ├──parked──▶ PK        └──reschedule──▶ old becomes CN, a new BK is created (prev_aids links them)
+   ├──parked──▶ PA        └──PATCH reschedule──▶ old becomes RES (next_aid → new), a new BK is created (prev_aids → old)
+   └──PUT v1 reschedule──▶ same appointment, new time, stays BK
 ```
+
+**Status codes.** The sandbox produces `BK`, `PA`, `OG`, `CM`, `CMNP`, `NS`, `CN` and `RES`. Production can also send these codes, which come from actions in the Eka app or from automatic jobs. Handle them in your code even though the sandbox never sends them:
+
+| Code | Meaning |
+|---|---|
+| `IN` | Initiated: the patient got a follow-up appointment message |
+| `AB` | Aborted: started but not completed; set automatically at 12:00 AM the next day |
+| `NS` (automatic) | Added to the queue but never started; set automatically at 12:00 AM the next day |
+| `NSD` / `NSS` | No-show marked by the doctor / by staff |
+| `CND` / `CNS` | Cancelled from the doctor's / staff account |
+| `PC` | Provisionally cancelled: the patient said they won't come |
+| `PNR` | Payment not received for a pre-paid appointment |
+| `RE` / `RED` | Rescheduled via API / from the doctor's account |
 
 ## 6. Webhooks
 
@@ -192,17 +220,23 @@ All settings are environment variables and all are optional.
 | `PERSIST` | `true` | `false` keeps data in memory only |
 | `DATA_FILE` | `./data/db.json` | Where state is saved |
 | `LATENCY_MS` | `0` | |
-| `CLINIC_SESSIONS` | `09:00-13:00,17:00-20:00` | Slot windows (IST) |
-| `SLOT_MINUTES` | `15` | |
+| `CLINIC_SESSIONS` | `09:00-13:00,17:00-20:00` | Hours used for the seeded schedules, and for slots of doctors with no schedule (IST) |
+| `SLOT_MINUTES` | `15` | Slot length for doctors with no schedule |
 | `CLOSED_WEEKDAYS` | `0` | 0 = Sunday; comma-separated |
 | `LOG_REQUESTS` | `true` | |
+
+`CLINIC_SESSIONS` and `CLOSED_WEEKDAYS` are read when the seed data is created. After changing them, call `POST /_sandbox/reset`, or change the schedules with `PATCH /schedule/{id}`.
 
 ## 9. How the sandbox differs from production
 
 * The sandbox is a mock. Shapes and flows follow the public docs at developer.eka.care. The final sign-off for an integration should still be a short run against production with a test workspace.
 * **Covered:** the Doc Tool APIs in the table above.
-* **Not covered:** schedule management (`create/update/delete schedule`, resolved schedule, service-conf), ABDM, EkaScribe, Health AI, Records and MedAssist.
-* **Parked status.** `parked` sets the status code `PK`. The public docs don't name this code, so confirm it before relying on it.
+* **Not covered:** the IPD service and SDK APIs (`/ipd/v1/...`; only IPD admission create/get is mocked), `POST /dr/v1/appointment/slots/reserve` (the docs say not to use it), ABDM, EkaScribe, Health AI, Records and MedAssist.
+* **Reschedule status.** The docs disagree with themselves here. The status list says `RE` means "rescheduled via API", but the `PATCH /appointments/v1/{id}/reschedule` page says the old appointment becomes `RES`. The sandbox follows the endpoint page (`RES`). Accept both in your code.
+* **`PUT /dr/v1/appointment/{id}/reschedule`** is documented only as returning 204. The sandbox moves the same appointment to the new time (and doctor or clinic, if you send them) and fires `appointment.updated`.
+* **`GET /v1/doctor/clinics/{id}`** is marked work-in-progress, and the docs show no success body. The sandbox returns `{"data":{"doctor_id","clinics":[…]}}`.
+* **Schedule rule precedence** (`daily` over `repeat-daily` over `repeat-weekly` over `weekly`) is the sandbox's reading of the docs, which don't spell it out.
+* **Time zones.** Schedules are resolved in IST. `GET /schedule/resolved` honours the `time-zone` header for the timestamps it returns.
 * **Prescription URLs** point to `sandbox.eka.invalid` and do not resolve.
 * **Single tenant.** There is one workspace, and every token belongs to it.
 * **Webhook delivery** is attempted once, with a 5 s timeout, and is not retried.
@@ -234,21 +268,23 @@ src/
   webhooks.js         delivery and Eka-Webhook-Signature signing
   models.js           response shapes for each API family
   dashboard.js        the page at http://localhost:4010
+  schedule.js         schedule rule resolution (used by /schedule/resolved and slots)
   routes/
     auth.js           login, refresh
-    patients.js       /dr/v1/patient…, /profiles/v1/patient…
+    patients.js       /dr/v1/patient…, /profiles/v1/patient…, /profiles/v1/emr-user…
     entities.js       business, doctors, clinics, onboarding, HIP users
     appointments.js   slots, booking, lifecycle, reschedule
+    schedules.js      /schedule…, service-conf
     other.js          prescription, payments, IPD, notify, webhook subscriptions
     sandbox.js        /_sandbox control endpoints
-test/smoke.js         63 end-to-end checks (npm test)
-postman/              Postman collection (70 requests)
+test/smoke.js         74 end-to-end checks (npm test)
+postman/              Postman collection (82 requests)
 ```
 
 To run the self-check:
 
 ```bash
-npm test     # starts a throwaway instance and runs 63 end-to-end checks across every route
+npm test     # starts a throwaway instance and runs 74 end-to-end checks across every route
 ```
 
 The same tests run automatically on GitHub for every push and pull request (`.github/workflows/test.yml`).

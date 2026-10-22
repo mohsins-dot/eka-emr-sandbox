@@ -162,6 +162,27 @@ function appointmentDetail(a) {
     video_connect: a.video_connect,
     notes: a.notes || '',
     prev_aids: a.prev_aids && a.prev_aids.length ? a.prev_aids : undefined,
+    next_aid: a.next_aid,
+  };
+}
+
+/** Item of GET /dr/v1/appointment/patient/{patient_id} */
+function patientAppointment(a) {
+  const d = store.db();
+  const svc = (d.services[a.doctor_id] || []).find((s) => s.conf_id === a.conf_id);
+  const iso = (t) => (t ? new Date(t * 1000).toISOString() : null);
+  const stage = { BK: 'BOOKED', PA: 'PARKED', OG: 'ONGOING', CM: 'COMPLETED', CMNP: 'COMPLETED', NS: 'NO_SHOW', CN: 'CANCELLED', RES: 'RESCHEDULED' }[a.status] || a.status;
+  return {
+    appointment_id: a.appointment_id, created_at: iso(a.created_at), doctor_id: a.doctor_id, patient_id: a.patient_id, clinic_id: a.clinic_id,
+    channel: a.channel, status: a.status, start_time: iso(a.start_time), end_time: iso(a.end_time),
+    visit_checkin: iso(a.created_at), visit_start: iso(a.visit_start), visit_end: iso(a.visit_end), stage,
+    'visit-type': a.channel === 'Walkin' ? 'WALKIN' : 'APPOINTMENT',
+    payment: a.payment || { payment_id: null, payment_status: null, amount: null },
+    prescription_id: a.prescription_id || null,
+    service: svc ? [{
+      created_at: iso(svc.created_at), mode: svc.mode, price: svc.price, post_pay: svc.post_pay, service_name: svc.service_name,
+      book_ahead_days: svc.book_ahead_days, appointment_type: svc.appointment_type, allow_patient_booking: svc.allow_patient_booking,
+    }] : [],
   };
 }
 
@@ -192,5 +213,5 @@ function prescriptionDetail(rx) {
 
 module.exports = {
   drPatient, profile, cdrDoctor, cdrClinic, drDoctorProfile, drClinic, cdrEkaUser, doctorRef, clinicRef, docName,
-  appointmentSummary, appointmentDetail, appointmentEvent, prescriptionEvent, prescriptionDetail,
+  appointmentSummary, appointmentDetail, patientAppointment, appointmentEvent, prescriptionEvent, prescriptionDetail,
 };

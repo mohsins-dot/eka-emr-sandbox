@@ -96,6 +96,14 @@ function register(r) {
     return M.drDoctorProfile(doc);
   });
 
+  // Marked [WIP] in the docs, which give no success body; the sandbox returns the doctor's clinics in the error envelope's shape.
+  r.add('GET', '/v1/doctor/clinics/:doctor_id', ({ params }) => {
+    const doc = store.findDoctor(params.doctor_id);
+    if (!doc) throw new HttpError(403, { data: {}, err: { code: 'DOCTOR_DATA_INVALID', message: 'Please enter valid doctor data' } });
+    const clinics = doc.clinic_ids.map((id) => store.db().clinics[id]).filter((c) => c && !c.deleted);
+    return { data: { doctor_id: doc.id, clinics: clinics.map((c) => ({ ...M.drClinic(c), partner_clinic_id: c.partner_id || null })) } };
+  });
+
   r.add('GET', '/dr/v1/business/clinic/:clinic_id', ({ params }) => {
     const c = store.findClinic(params.clinic_id);
     if (!c) throw new HttpError(404, { success: false, code: 'CLINIC_NOT_FOUND', message: 'The specified clinic_id does not exist' });

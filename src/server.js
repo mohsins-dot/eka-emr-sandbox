@@ -10,6 +10,7 @@ function buildRouter() {
   require('./routes/patients')(r);
   require('./routes/entities')(r);
   require('./routes/appointments')(r);
+  require('./routes/schedules')(r);
   require('./routes/other')(r);
   require('./routes/sandbox')(r);
   return r;
@@ -18,7 +19,7 @@ function buildRouter() {
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
-  'Access-Control-Allow-Headers': 'auth,authorization,client-id,content-type,x-sandbox-force-status',
+  'Access-Control-Allow-Headers': 'auth,authorization,client-id,content-type,time-zone,x-sandbox-force-status',
 };
 
 function send(res, status, body, extraHeaders = {}) {
