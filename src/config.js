@@ -5,7 +5,8 @@ const env = process.env;
 
 module.exports = {
   port: Number(env.PORT || 4010),
-  host: env.HOST || '0.0.0.0',
+  // Unset = all interfaces, IPv4 and IPv6, so `localhost` works whether it resolves to 127.0.0.1 or ::1.
+  host: env.HOST || undefined,
 
   // Sandbox credentials handed to integrators. Change freely; they only work against this sandbox.
   clientId: env.EKA_SANDBOX_CLIENT_ID || 'EC_SANDBOX_001',
