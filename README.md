@@ -50,6 +50,12 @@ Then open **http://localhost:4010**. That's the sandbox's own page, with six tab
 
 **Port 4010 already in use?** Start on another port with `PORT=4020 npm start` (PowerShell: `$env:PORT=4020; npm start`).
 
+**Hosted sandbox.** To get a public URL instead of `localhost`, deploy the repo to Render with one click:
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/mohsins-dot/eka-emr-sandbox)
+
+Render builds the Dockerfile and gives you a URL like `https://eka-emr-sandbox.onrender.com`. Use it everywhere this README says `http://localhost:4010`. It redeploys on every push to `main`. On the free plan the service sleeps after 15 minutes without traffic (the first request then takes about a minute) and its data resets on each restart or deploy, back to the seeded test data.
+
 ## 2. Point your code at it
 
 | | Production | Sandbox |

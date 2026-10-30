@@ -1,0 +1,15 @@
+# Render Blueprint: one-click hosted sandbox. See README > "Hosted sandbox".
+services:
+  - type: web
+    name: eka-emr-sandbox
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /
+    autoDeploy: true
+    envVars:
+      # Render injects PORT; HOST must be all interfaces for its router to reach the container.
+      - key: HOST
+        value: 0.0.0.0
+      - key: LOG_REQUESTS
+        value: "true"
