@@ -147,7 +147,9 @@ tr.sel td { background: var(--primary-soft) !important; }
 .st.BK { color: var(--post); background: var(--post-bg); } .st.OG { color: var(--put); background: var(--put-bg); }
 .st.CM, .st.CMNP { color: var(--get); background: var(--get-bg); } .st.CN, .st.NS, .st.RES { color: var(--delete); background: var(--delete-bg); }
 .st.PA { color: var(--patch); background: var(--patch-bg); }
-.actions { display: flex; gap: 6px; }
+.actions { display: flex; gap: 6px; flex-wrap: wrap; }
+td.acts { white-space: normal; min-width: 260px; }
+.cut { display: inline-block; max-width: 340px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle; font-size: 12px; }
 .toast { position: fixed; right: 20px; bottom: 20px; z-index: 50; display: flex; flex-direction: column; gap: 8px; }
 .toast div { background: var(--text); color: var(--bg); padding: 10px 14px; border-radius: 10px; font-size: 13px; box-shadow: 0 10px 30px rgba(0,0,0,.2); max-width: 380px; animation: tin .18s ease-out; }
 @keyframes tin { from { transform: translateY(8px); opacity: 0; } }
@@ -827,7 +829,7 @@ function renderLog(selId) {
     const rows = LOG.filter((e) => (logFilter === 'all' || (logFilter === 'errors' ? e.status >= 400 : e.source === logFilter)) && (!logQuery || e.path.includes(logQuery)));
     $('#logTable').innerHTML = rows.length ? `<table><thead><tr><th>Time</th><th>Source</th><th>Request</th><th>Status</th><th style="text-align:right">ms</th></tr></thead><tbody>
       ${rows.map((e) => `<tr class="click ${sel === e.id ? 'sel' : ''}" data-id="${e.id}"><td class="mono faint">${clock(e.at)}</td><td><span class="src ${e.source}">${e.source === 'app' ? 'your app' : 'console'}</span></td>
-        <td style="max-width:440px;overflow:hidden;text-overflow:ellipsis"><span class="m sm ${e.method}">${mlabel(e.method)}</span> <span class="mono" style="font-size:12px">${esc(e.path + (e.query || ''))}</span></td>
+        <td><span class="m sm ${e.method}">${mlabel(e.method)}</span> <span class="mono cut" title="${esc(e.path + (e.query || ''))}">${esc(e.path + (e.query || ''))}</span></td>
         <td><span class="status ${sc(e.status)}">${e.status}</span>${e.forced ? ' <span class="chip warn">forced</span>' : ''}</td><td class="mono faint" style="text-align:right">${e.ms}</td></tr>`).join('')}</tbody></table>`
       : `<div class="empty">${LOG.length ? 'Nothing matches this filter.' : `No API calls yet.<br>Send a request from your app to <code>${esc(ORIGIN)}</code>, or use the <a href="#/console">API Console</a>.`}</div>`;
     $$('#logTable tr[data-id]').forEach((tr) => tr.onclick = () => { sel = Number(tr.dataset.id); history.replaceState(null, '', '#/log/' + sel); draw(); });
@@ -879,7 +881,7 @@ async function renderAppointments() {
         <td class="mono" title="${esc(a.appointment_id)}">${esc(a.appointment_id.length > 24 ? a.appointment_id.slice(0, 24) + '…' : a.appointment_id)}${a.appointment_id === cur ? ' <span class="chip primary">in console</span>' : ''}${a.partner_appointment_id ? `<div class="faint xs">${esc(a.partner_appointment_id)}</div>` : ''}</td>
         <td>Dr. ${esc(d.firstname || '')} ${esc(d.lastname || '')}</td><td>${esc(p.fln || a.patient_id)}</td><td>${esc(ist(a.start_time))}</td>
         <td class="mono">${a.prescription_id ? esc(a.prescription_id) : '<span class="faint">—</span>'}</td>
-        <td><div class="actions">${acts.map(([k, t]) => `<button class="btn sm ${k === 'cancel' ? 'danger' : ''}" data-a="${k}" data-id="${esc(a.appointment_id)}">${t}</button>`).join('')}${a.appointment_id !== cur ? `<button class="btn ghost sm" data-a="use" data-id="${esc(a.appointment_id)}" title="Make this the appointment_id the console uses">Use in console</button>` : ''}</div></td></tr>`;
+        <td class="acts"><div class="actions">${acts.map(([k, t]) => `<button class="btn sm ${k === 'cancel' ? 'danger' : ''}" data-a="${k}" data-id="${esc(a.appointment_id)}">${t}</button>`).join('')}${a.appointment_id !== cur ? `<button class="btn ghost sm" data-a="use" data-id="${esc(a.appointment_id)}" title="Make this the appointment_id the console uses">Use in console</button>` : ''}</div></td></tr>`;
     }).join('')}</tbody></table></div>
     <div class="legend">${[['BK', 'Booked'], ['PA', 'Parked'], ['OG', 'Consult started'], ['CM', 'Completed with Rx'], ['CMNP', 'Completed, no Rx'], ['NS', 'No-show'], ['CN', 'Cancelled'], ['RES', 'Rescheduled (old)']].map(([k, t]) => `<span><span class="st ${k}">${k}</span>${t}</span>`).join('')}
       <span class="faint">Production can also send IN, AB, NSD, NSS, CND, CNS, PC, PNR, RE and RED. Handle them too.</span></div>`;
